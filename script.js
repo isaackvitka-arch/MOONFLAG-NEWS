@@ -37,7 +37,6 @@ function mostrarNoticias(listaDeNoticias) {
     const tituloSeccion = document.querySelector('.latest-section h2');
     
     // Muestra el Hero de presentación únicamente cuando se visualizan TODAS las noticias (Vista Inicio)
-    // Si la lista está filtrada por alguna categoría, lo oculta.
     const esInicioCompleto = listaDeNoticias.length === todasLasNoticias.length;
     alternarHeroPresentacion(esInicioCompleto);
 
@@ -57,9 +56,25 @@ function mostrarNoticias(listaDeNoticias) {
         return;
     }
 
+    // --- LÓGICA DE AUTOMATIZACIÓN DE NOTICIA MÁS RECIENTE ---
+    // Si estamos en la vista general (Inicio), la noticia principal será el ÚLTIMO elemento agregado al JSON.
+    // Si la lista está filtrada por categoría, tomamos el primer resultado del filtro.
+    let noticiaPrincipal;
+    let noticiasRestantes = [];
+
+    if (esInicioCompleto) {
+        // En Inicio: El último elemento del arreglo es la noticia más reciente
+        noticiaPrincipal = listaDeNoticias[listaDeNoticias.length - 1];
+        // Las noticias restantes son todas las anteriores, invertidas para mostrar de más nueva a más vieja
+        noticiasRestantes = listaDeNoticias.slice(0, listaDeNoticias.length - 1).reverse();
+    } else {
+        // En Filtros por Categoría: La primera del filtro va al Hero, las demás al grid
+        noticiaPrincipal = listaDeNoticias[0];
+        noticiasRestantes = listaDeNoticias.slice(1);
+    }
+
     // --- MANEJO DINÁMICO DEL HERO DE NOTICIA PRINCIPAL ---
-    if (contenedorHero) {
-        const noticiaPrincipal = listaDeNoticias[0];
+    if (contenedorHero && noticiaPrincipal) {
         contenedorHero.innerHTML = `
             <div class="hero-card" style="cursor: pointer;">
                 <div class="hero-image-wrapper">
@@ -83,9 +98,7 @@ function mostrarNoticias(listaDeNoticias) {
         }
     }
 
-    // --- MANEJO DE LAS CASILLAS RESTANTES (.slice) ---
-    const noticiasRestantes = contenedorHero ? listaDeNoticias.slice(1) : listaDeNoticias;
-
+    // --- MANEJO DE LAS CASILLAS SECUNDARIAS ---
     noticiasRestantes.forEach(noticia => {
         const tarjeta = document.createElement('article');
         tarjeta.className = 'noticia-card';
