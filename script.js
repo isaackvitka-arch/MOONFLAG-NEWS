@@ -57,18 +57,13 @@ function mostrarNoticias(listaDeNoticias) {
     }
 
     // --- LÓGICA DE AUTOMATIZACIÓN DE NOTICIA MÁS RECIENTE ---
-    // Si estamos en la vista general (Inicio), la noticia principal será el ÚLTIMO elemento agregado al JSON.
-    // Si la lista está filtrada por categoría, tomamos el primer resultado del filtro.
     let noticiaPrincipal;
     let noticiasRestantes = [];
 
     if (esInicioCompleto) {
-        // En Inicio: El último elemento del arreglo es la noticia más reciente
         noticiaPrincipal = listaDeNoticias[listaDeNoticias.length - 1];
-        // Las noticias restantes son todas las anteriores, invertidas para mostrar de más nueva a más vieja
         noticiasRestantes = listaDeNoticias.slice(0, listaDeNoticias.length - 1).reverse();
     } else {
-        // En Filtros por Categoría: La primera del filtro va al Hero, las demás al grid
         noticiaPrincipal = listaDeNoticias[0];
         noticiasRestantes = listaDeNoticias.slice(1);
     }
@@ -126,17 +121,14 @@ function verArticuloCompleto(id) {
     const contenedorGrid = document.getElementById('contenedor-noticias');
     const tituloSeccion = document.querySelector('.latest-section h2');
     
-    // Ocultar el Hero de presentación al entrar al detalle de cualquier noticia
     alternarHeroPresentacion(false);
 
     const noticia = todasLasNoticias.find(item => item.id === id);
 
     if (noticia && contenedorGrid) {
-        // Ocultamos el Hero dinámico de la lista y el título "Últimas Noticias"
         if (contenedorHero) contenedorHero.innerHTML = '';
         if (tituloSeccion) tituloSeccion.style.display = 'none';
 
-        // Generar bloques alternados de texto e imagen
         let bloquesHTML = '';
         if (noticia.contenido && Array.isArray(noticia.contenido)) {
             noticia.contenido.forEach(bloque => {
@@ -155,7 +147,6 @@ function verArticuloCompleto(id) {
             bloquesHTML = `<p>${noticia.texto || ''}</p>`;
         }
 
-        // Reemplazamos el Grid por la vista de lectura
         contenedorGrid.innerHTML = `
             <article class="articulo-completo">
                 <button class="btn-volver" id="btn-regresar">← Volver a últimas noticias</button>
@@ -174,7 +165,6 @@ function verArticuloCompleto(id) {
             </article>
         `;
 
-        // Botón regresar
         const btnRegresar = document.getElementById('btn-regresar');
         if (btnRegresar) {
             btnRegresar.addEventListener('click', () => {
@@ -182,12 +172,11 @@ function verArticuloCompleto(id) {
             });
         }
 
-        // Scroll al inicio para leer la nota
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
 
-// --- 5. LÓGICA DE MENÚ Y FILTRADO (COMPATIBLE CON HEADER Y FOOTER) ---
+// --- 5. LÓGICA DE MENÚ Y FILTRADO ---
 function inicializarMenu() {
     const enlacesCategorias = document.querySelectorAll('.main-nav a, .footer-column a[href^="#"]');
     const menuBtn = document.getElementById('menu-btn');
@@ -209,11 +198,9 @@ function inicializarMenu() {
                     mostrarNoticias(noticiasFiltradas);
                 }
 
-                // Cerrar menú móvil
                 if (mainNav) mainNav.classList.remove('active');
                 if (menuBtn) menuBtn.textContent = '☰';
                 
-                // Hacer scroll suave hacia la sección de noticias
                 const seccionMain = document.querySelector('.main-content');
                 if (seccionMain) {
                     seccionMain.scrollIntoView({ behavior: 'smooth' });
@@ -222,7 +209,6 @@ function inicializarMenu() {
         });
     });
 
-    // Menú Hamburguesa en Móviles
     if (menuBtn && mainNav) {
         menuBtn.addEventListener('click', () => {
             mainNav.classList.toggle('active');
