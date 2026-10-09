@@ -1,7 +1,7 @@
 // --- 1. VARIABLES GLOBALES ---
 let todasLasNoticias = [];
 
-// --- 2. ESPERAR A QUE EL DOM ESTÉ LISTO ANTES DE EJECUTAR CUALQUIER LÓGICA ---
+// --- 2. ESPERAR A QUE EL DOM ESTÉ LISTO ---
 document.addEventListener('DOMContentLoaded', () => {
     
     // Cargar JSON con RUTA RELATIVA (Obligatorio para GitHub Pages)
@@ -14,9 +14,32 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(datos => {
             todasLasNoticias = datos;
-            mostrarNoticias(todasLasNoticias);
+
+            // --- RUTEO VÍA URL (?id=8 o ?nota=8) ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const notaId = urlParams.get('id') || urlParams.get('nota');
+
+            if (notaId) {
+                // Si la URL trae un parámetro de nota, abrir esa nota directo
+                verArticuloCompleto(notaId, false);
+            } else {
+                // Si no trae parámetro, mostrar la portada principal
+                mostrarNoticias(todasLasNoticias);
+            }
         })
-        .catch(error => console.error('Error cargando las noticias de KEYAH NEWS:', error));
+        .catch(error => console.error('Error cargando las noticias de MOONFLAG NEWS:', error));
+
+    // Escuchar cuando el usuario presiona "Atrás" o "Adelante" en el navegador
+    window.addEventListener('popstate', (event) => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const notaId = urlParams.get('id') || urlParams.get('nota');
+
+        if (notaId) {
+            verArticuloCompleto(notaId, false);
+        } else {
+            mostrarNoticias(todasLasNoticias, false);
+        }
+    });
 
     // Inicializar menú hamburguesa y filtros
     inicializarMenu();
@@ -31,23 +54,28 @@ function alternarHeroPresentacion(mostrar) {
 }
 
 // --- 3. FUNCIÓN PRINCIPAL PARA PINTAR PORTADA (HERO Y GRID) ---
-function mostrarNoticias(listaDeNoticias) {
+function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
+    // Si venimos de ver una nota individual, limpiar la URL sin recargar la página
+    if (actualizarURL && window.location.search !== '') {
+        history.pushState({}, '', window.location.pathname);
+    }
+
+    // Restaurar título del sitio
+    document.title = 'MOONFLAG NEWS';
+
     const contenedorHero = document.getElementById('hero-noticia');
     const contenedorGrid = document.getElementById('contenedor-noticias');
     const tituloSeccion = document.querySelector('.latest-section h2');
     
-    // Muestra el Hero de presentación únicamente cuando se visualizan TODAS las noticias (Vista Inicio)
     const esInicioCompleto = listaDeNoticias.length === todasLasNoticias.length;
     alternarHeroPresentacion(esInicioCompleto);
 
-    // Mostramos de nuevo el título "Últimas Noticias"
     if (tituloSeccion) {
         tituloSeccion.style.display = 'block';
     }
     
     if (!contenedorGrid) return;
 
-    // Limpiamos los contenedores anteriores
     if (contenedorHero) contenedorHero.innerHTML = '';
     contenedorGrid.innerHTML = '';
 
@@ -56,7 +84,6 @@ function mostrarNoticias(listaDeNoticias) {
         return;
     }
 
-    // --- LÓGICA DE AUTOMATIZACIÓN DE NOTICIA MÁS RECIENTE ---
     let noticiaPrincipal;
     let noticiasRestantes = [];
 
@@ -68,7 +95,7 @@ function mostrarNoticias(listaDeNoticias) {
         noticiasRestantes = listaDeNoticias.slice(1);
     }
 
-    // --- MANEJO DINÁMICO DEL HERO DE NOTICIA PRINCIPAL ---
+    // --- HERO PRINCIPAL ---
     if (contenedorHero && noticiaPrincipal) {
         contenedorHero.innerHTML = `
             <div class="hero-card" style="cursor: pointer;">
@@ -84,7 +111,6 @@ function mostrarNoticias(listaDeNoticias) {
             </div>
         `;
 
-        // Clic en el Hero para ver artículo completo
         const tarjetaHero = contenedorHero.querySelector('.hero-card');
         if (tarjetaHero) {
             tarjetaHero.addEventListener('click', () => {
@@ -93,7 +119,7 @@ function mostrarNoticias(listaDeNoticias) {
         }
     }
 
-    // --- MANEJO DE LAS CASILLAS SECUNDARIAS ---
+    // --- CUADRÍCULA DE NOTICIAS SECUNDARIAS ---
     noticiasRestantes.forEach(noticia => {
         const tarjeta = document.createElement('article');
         tarjeta.className = 'noticia-card';
@@ -106,7 +132,6 @@ function mostrarNoticias(listaDeNoticias) {
             <p>${noticia.resumen}</p>
         `;
 
-        // Clic en tarjeta secundaria
         tarjeta.addEventListener('click', () => {
             verArticuloCompleto(noticia.id);
         });
@@ -115,17 +140,32 @@ function mostrarNoticias(listaDeNoticias) {
     });
 }
 
-// --- 4. VISTA DE LECTURA DE ARTÍCULO COMPLETO (SPA) ---
-function verArticuloCompleto(id) {
+// --- 4. VISTA DE LECTURA DE ARTÍCULO COMPLETO (SPA + RUTEO) ---
+function verArticuloCompleto(id, actualizarURL = true) {
     const contenedorHero = document.getElementById('hero-noticia');
     const contenedorGrid = document.getElementById('contenedor-noticias');
     const tituloSeccion = document.querySelector('.latest-section h2');
     
     alternarHeroPresentacion(false);
 
-    const noticia = todasLasNoticias.find(item => item.id === id);
+    // Buscar coincidencia por ID numérico o Slug
+    const noticia = todasLasNoticias.find(item => String(item.id) === String(id) || item.slug === String(id));
 
     if (noticia && contenedorGrid) {
+        // Actualizar la barra de direcciones (?id=8) sin recargar la página
+        if (actualizarURL) {
+            history.pushState({ id: noticia.id }, '', `?id=${noticia.id}`);
+        }
+
+        // Actualizar el título del navegador para esta nota
+        document.title = `${noticia.titulo} | MOONFLAG NEWS`;
+
+        // Actualizar la meta etiqueta og:image si tu CMS genera 'imagenSocial' o usa 'imagen'
+        const ogImage = document.querySelector('meta[property="og:image"]');
+        if (ogImage) {
+            ogImage.setAttribute('content', noticia.imagenSocial || noticia.imagen);
+        }
+
         if (contenedorHero) contenedorHero.innerHTML = '';
         if (tituloSeccion) tituloSeccion.style.display = 'none';
 
@@ -173,6 +213,9 @@ function verArticuloCompleto(id) {
         }
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (!noticia && todasLasNoticias.length > 0) {
+        // Si el ID ingresado en el link no existe, redirigir al Home
+        mostrarNoticias(todasLasNoticias);
     }
 }
 
