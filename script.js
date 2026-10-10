@@ -1,10 +1,10 @@
-// --- 1. VARIABLES GLOBALES ---
+
 let todasLasNoticias = [];
 
-// --- 2. ESPERAR A QUE EL DOM ESTÉ LISTO ---
+
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Cargar JSON con RUTA RELATIVA (Obligatorio para GitHub Pages)
+    
     fetch('./noticias.json')
         .then(respuesta => {
             if (!respuesta.ok) {
@@ -15,21 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(datos => {
             todasLasNoticias = datos;
 
-            // --- RUTEO VÍA URL (?id=8 o ?nota=8) ---
+            
             const urlParams = new URLSearchParams(window.location.search);
             const notaId = urlParams.get('id') || urlParams.get('nota');
 
             if (notaId) {
-                // Si la URL trae un parámetro de nota, abrir esa nota directo
+                
                 verArticuloCompleto(notaId, false);
             } else {
-                // Si no trae parámetro, mostrar la portada principal
+                
                 mostrarNoticias(todasLasNoticias);
             }
         })
         .catch(error => console.error('Error cargando las noticias de MOONFLAG NEWS:', error));
 
-    // Escuchar cuando el usuario presiona "Atrás" o "Adelante" en el navegador
+    
     window.addEventListener('popstate', (event) => {
         const urlParams = new URLSearchParams(window.location.search);
         const notaId = urlParams.get('id') || urlParams.get('nota');
@@ -41,11 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Inicializar menú hamburguesa y filtros
+    
     inicializarMenu();
 });
 
-// --- HELPER: OCULTAR O MOSTRAR EL HERO DE PRESENTACIÓN ---
+
 function alternarHeroPresentacion(mostrar) {
     const heroPresentacion = document.querySelector('.hero-presentacion');
     if (heroPresentacion) {
@@ -53,14 +53,14 @@ function alternarHeroPresentacion(mostrar) {
     }
 }
 
-// --- 3. FUNCIÓN PRINCIPAL PARA PINTAR PORTADA (HERO Y GRID) ---
+
 function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
-    // Si venimos de ver una nota individual, limpiar la URL sin recargar la página
+    
     if (actualizarURL && window.location.search !== '') {
         history.pushState({}, '', window.location.pathname);
     }
 
-    // Restaurar título del sitio
+    
     document.title = 'MOONFLAG NEWS';
 
     const contenedorHero = document.getElementById('hero-noticia');
@@ -95,7 +95,7 @@ function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
         noticiasRestantes = listaDeNoticias.slice(1);
     }
 
-    // --- HERO PRINCIPAL ---
+    
     if (contenedorHero && noticiaPrincipal) {
         contenedorHero.innerHTML = `
             <div class="hero-card" style="cursor: pointer;">
@@ -119,7 +119,7 @@ function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
         }
     }
 
-    // --- CUADRÍCULA DE NOTICIAS SECUNDARIAS ---
+    
     noticiasRestantes.forEach(noticia => {
         const tarjeta = document.createElement('article');
         tarjeta.className = 'noticia-card';
@@ -140,7 +140,7 @@ function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
     });
 }
 
-// --- 4. VISTA DE LECTURA DE ARTÍCULO COMPLETO (SPA + RUTEO) ---
+
 function verArticuloCompleto(id, actualizarURL = true) {
     const contenedorHero = document.getElementById('hero-noticia');
     const contenedorGrid = document.getElementById('contenedor-noticias');
@@ -148,19 +148,19 @@ function verArticuloCompleto(id, actualizarURL = true) {
     
     alternarHeroPresentacion(false);
 
-    // Buscar coincidencia por ID numérico o Slug
+    
     const noticia = todasLasNoticias.find(item => String(item.id) === String(id) || item.slug === String(id));
 
     if (noticia && contenedorGrid) {
-        // Actualizar la barra de direcciones (?id=8) sin recargar la página
+       
         if (actualizarURL) {
             history.pushState({ id: noticia.id }, '', `?id=${noticia.id}`);
         }
 
-        // Actualizar el título del navegador para esta nota
+        
         document.title = `${noticia.titulo} | MOONFLAG NEWS`;
 
-        // Actualizar la meta etiqueta og:image si tu CMS genera 'imagenSocial' o usa 'imagen'
+        
         const ogImage = document.querySelector('meta[property="og:image"]');
         if (ogImage) {
             ogImage.setAttribute('content', noticia.imagenSocial || noticia.imagen);
@@ -214,12 +214,12 @@ function verArticuloCompleto(id, actualizarURL = true) {
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (!noticia && todasLasNoticias.length > 0) {
-        // Si el ID ingresado en el link no existe, redirigir al Home
+       
         mostrarNoticias(todasLasNoticias);
     }
 }
 
-// --- 5. LÓGICA DE MENÚ Y FILTRADO ---
+
 function inicializarMenu() {
     const enlacesCategorias = document.querySelectorAll('.main-nav a, .footer-column a[href^="#"]');
     const menuBtn = document.getElementById('menu-btn');
