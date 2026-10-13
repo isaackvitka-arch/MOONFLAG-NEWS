@@ -1,6 +1,6 @@
 
-let todasLasNoticias = [];
 
+let todasLasNoticias = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     
@@ -14,16 +14,17 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(datos => {
             todasLasNoticias = datos;
+            
+            
+            renderizarMenuLateral(todasLasNoticias);
 
             
             const urlParams = new URLSearchParams(window.location.search);
             const notaId = urlParams.get('id') || urlParams.get('nota');
 
             if (notaId) {
-                
                 verArticuloCompleto(notaId, false);
             } else {
-                
                 mostrarNoticias(todasLasNoticias);
             }
         })
@@ -54,13 +55,50 @@ function alternarHeroPresentacion(mostrar) {
 }
 
 
+function renderizarMenuLateral(listaNoticias) {
+    const contenedorMenu = document.getElementById('menu-archivo-noticias');
+    if (!contenedorMenu) return;
+
+    contenedorMenu.innerHTML = '';
+
+    if (listaNoticias.length === 0) {
+        contenedorMenu.innerHTML = `<li style="font-size: 0.8rem; padding: 10px 0; color: #666;">No hay registros disponibles.</li>`;
+        return;
+    }
+
+    listaNoticias.forEach(noticia => {
+        const li = document.createElement('li');
+        li.className = 'aside-news-item';
+
+        
+        li.innerHTML = `
+            <a href="#" class="aside-news-link" data-id="${noticia.id}">
+                <img src="${noticia.imagen}" alt="${noticia.titulo}" class="aside-news-thumb">
+                <div class="aside-news-info">
+                    <span class="aside-news-title">${noticia.titulo}</span>
+                    <span class="aside-news-meta">${noticia.categoria} &bull; ${noticia.fecha}</span>
+                </div>
+            </a>
+        `;
+
+        const enlace = li.querySelector('a');
+        enlace.addEventListener('click', (e) => {
+            e.preventDefault();
+            verArticuloCompleto(noticia.id);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        contenedorMenu.appendChild(li);
+    });
+}
+
+
 function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
     
     if (actualizarURL && window.location.search !== '') {
         history.pushState({}, '', window.location.pathname);
     }
 
-    
     document.title = 'MOONFLAG NEWS';
 
     const contenedorHero = document.getElementById('hero-noticia');
@@ -102,6 +140,7 @@ function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
                 <div class="hero-image-wrapper">
                     <img src="${noticiaPrincipal.imagen}" alt="${noticiaPrincipal.titulo}">
                 </div>
+                <div class="hero-overlay"></div>
                 <div class="hero-content">
                     <span class="badge badge-hero">${noticiaPrincipal.categoria}</span>
                     <h1>${noticiaPrincipal.titulo}</h1>
@@ -148,7 +187,6 @@ function verArticuloCompleto(id, actualizarURL = true) {
     
     alternarHeroPresentacion(false);
 
-    
     const noticia = todasLasNoticias.find(item => String(item.id) === String(id) || item.slug === String(id));
 
     if (noticia && contenedorGrid) {
@@ -157,10 +195,8 @@ function verArticuloCompleto(id, actualizarURL = true) {
             history.pushState({ id: noticia.id }, '', `?id=${noticia.id}`);
         }
 
-        
         document.title = `${noticia.titulo} | MOONFLAG NEWS`;
 
-        
         const ogImage = document.querySelector('meta[property="og:image"]');
         if (ogImage) {
             ogImage.setAttribute('content', noticia.imagenSocial || noticia.imagen);
@@ -214,7 +250,6 @@ function verArticuloCompleto(id, actualizarURL = true) {
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (!noticia && todasLasNoticias.length > 0) {
-       
         mostrarNoticias(todasLasNoticias);
     }
 }
