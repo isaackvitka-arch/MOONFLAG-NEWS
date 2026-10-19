@@ -2,7 +2,7 @@ let todasLasNoticias = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    
+    // Cargar las noticias desde el archivo JSON
     fetch('./noticias.json')
         .then(respuesta => {
             if (!respuesta.ok) {
@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(datos => {
             todasLasNoticias = datos;
             
-            
+            // Renderizar el menú lateral de archivos con miniaturas
             renderizarMenuLateral(todasLasNoticias);
 
-            
+            // Verificar si hay un parámetro en la URL para abrir una nota directamente
             const urlParams = new URLSearchParams(window.location.search);
             const notaId = urlParams.get('id') || urlParams.get('nota');
 
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => console.error('Error cargando las noticias de MOONFLAG NEWS:', error));
 
-    
+    // Manejar el botón de retroceso/avance del navegador (historial)
     window.addEventListener('popstate', (event) => {
         const urlParams = new URLSearchParams(window.location.search);
         const notaId = urlParams.get('id') || urlParams.get('nota');
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    
+    // Inicializar la barra de navegación móvil
     inicializarMenu();
 });
 
@@ -68,7 +68,7 @@ function renderizarMenuLateral(listaNoticias) {
         const li = document.createElement('li');
         li.className = 'aside-news-item';
 
-        
+        // Estructura con miniatura, título y metadatos
         li.innerHTML = `
             <a href="#" class="aside-news-link" data-id="${noticia.id}">
                 <img src="${noticia.imagen}" alt="${noticia.titulo}" class="aside-news-thumb">
@@ -120,18 +120,17 @@ function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
         return;
     }
 
+    // Ordenar las noticias de la más nueva a la más antigua según su ID de forma descendente
+    let noticiasOrdenadas = [...listaDeNoticias].sort((a, b) => Number(b.id) - Number(a.id));
+
     let noticiaPrincipal;
     let noticiasRestantes = [];
 
-    if (esInicioCompleto) {
-        noticiaPrincipal = listaDeNoticias[listaDeNoticias.length - 1];
-        noticiasRestantes = listaDeNoticias.slice(0, listaDeNoticias.length - 1).reverse();
-    } else {
-        noticiaPrincipal = listaDeNoticias[0];
-        noticiasRestantes = listaDeNoticias.slice(1);
-    }
+    // La más nueva siempre va al Hero
+    noticiaPrincipal = noticiasOrdenadas[0];
+    noticiasRestantes = noticiasOrdenadas.slice(1);
 
-    
+    // Renderizar la noticia principal (Hero)
     if (contenedorHero && noticiaPrincipal) {
         contenedorHero.innerHTML = `
             <div class="hero-card" style="cursor: pointer;">
@@ -156,7 +155,7 @@ function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
         }
     }
 
-    
+    // Renderizar la cuadrícula de noticias secundarias
     noticiasRestantes.forEach(noticia => {
         const tarjeta = document.createElement('article');
         tarjeta.className = 'noticia-card';
