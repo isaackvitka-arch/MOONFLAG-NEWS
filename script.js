@@ -1,5 +1,3 @@
-
-
 let todasLasNoticias = [];
 
 document.addEventListener('DOMContentLoaded', () => {
