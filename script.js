@@ -294,7 +294,9 @@ function inicializarMenu() {
     }
 }
 
-
+/* MOONFLAG NEWS — mejoras.js
+   Cárgalo DESPUÉS de script.js: <script src="mejoras.js"></script>
+   Usa la variable global `todasLasNoticias` y la función `verArticuloCompleto` de script.js. */
 
 (function () {
     const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) =>
@@ -309,7 +311,7 @@ function inicializarMenu() {
         (n) => String(n.id) === String(id) || n.slug === String(id)
     );
 
-    
+    /* ---- Elementos fijos: progreso y volver arriba ---- */
     const barra = document.createElement('div');
     barra.className = 'progreso-lectura';
     barra.setAttribute('aria-hidden', 'true');
@@ -337,7 +339,7 @@ function inicializarMenu() {
         barra.style.width = Math.min(Math.max(avance, 0), 1) * 100 + '%';
     }
 
-    
+    /* ---- Espera a que script.js termine de cargar noticias.json ---- */
     function iniciarCuandoHayDatos() {
         let intentos = 0;
         const reloj = setInterval(() => {
@@ -348,12 +350,12 @@ function inicializarMenu() {
                 crearBandaTalento();
                 vigilarContenido();
             } else if (intentos > 80) {
-                clearInterval(reloj); 
+                clearInterval(reloj); // 8 s sin datos: no hacemos nada
             }
         }, 100);
     }
 
-    
+    /* ---- Frame 1: ticker "Lo último" ---- */
     function crearTicker() {
         const cabecera = document.querySelector('.main-header');
         if (!cabecera) return;
@@ -382,7 +384,7 @@ function inicializarMenu() {
         cabecera.appendChild(ticker);
     }
 
-    
+    /* ---- Frame 3: banda para talentos emergentes ---- */
     function crearBandaTalento() {
         const hero = document.getElementById('hero-noticia');
         if (!hero) return;
@@ -400,7 +402,7 @@ function inicializarMenu() {
         hero.insertAdjacentElement('afterend', banda);
     }
 
-    
+    /* ---- Observa cuándo se abre o se cierra un artículo ---- */
     function vigilarContenido() {
         const contenedor = document.getElementById('contenedor-noticias');
         if (!contenedor) return;
@@ -418,7 +420,7 @@ function inicializarMenu() {
         revisar();
     }
 
-    
+    /* ---- Frame 5: compartir + seguir leyendo ---- */
     function agregarExtras(articulo) {
         const noticia = buscar(idActual());
         if (!noticia) return;
@@ -486,7 +488,7 @@ function inicializarMenu() {
 })();
 
 
-
+/* ---------- Hero dinámico: destacadas con lunas ---------- */
 function escaparHTML(t) {
     return String(t ?? '').replace(/[&<>"']/g, (c) =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

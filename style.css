@@ -752,12 +752,6 @@ h1, h2, h3, h4, h5, h6, .articulo-header h1 {
 }
 .skip-link:focus { top: 12px; }
 
-/* El color solo aparece con mouse; en pantallas táctiles no hay hover */
-@media (hover: none) {
-    .noticia-card img,
-    .aside-news-thumb,
-    .hero-image-wrapper img { filter: grayscale(0%); }
-}
 
 /* El sidebar nunca queda cortado en pantallas bajas */
 .sidebar-aside {
