@@ -460,6 +460,18 @@ function inicializarMenu() {
             }
             const red = e.target.closest('[data-red]');
             if (red) {
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: noticia.titulo,
+                            text: `${noticia.titulo} | MOONFLAG NEWS`,
+                            url: location.href
+                        });
+                        return;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return;
+                    }
+                }
                 const nombre = red.textContent;
                 window.open(red.dataset.red, '_blank', 'noopener');
                 try {
