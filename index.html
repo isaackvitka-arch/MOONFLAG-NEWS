@@ -4,121 +4,82 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MOONFLAG NEWS</title>
-    <meta name="description" content="Espacio de exposición para talentos nuevos y emergentes: música, arte, conciertos y obras.">
-    <meta name="theme-color" content="#111111">
+    <meta name="description" content="Espacio de exposición para talentos nuevos y emergentes: música, arte, conciertos y deportes.">
+    <meta name="theme-color" content="#000000">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="MOONFLAG NEWS">
     <meta property="og:title" content="MOONFLAG NEWS">
     <meta property="og:description" content="Espacio de exposición para talentos nuevos y emergentes.">
-    <meta property="og:image" content="img/logo-oficial-moonflag-news.png">
-    
+    <meta property="og:image" content="../img/logo-oficial-moonflag-news.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <a class="skip-link" href="#hero-noticia">Saltar al contenido</a>
+    <a class="skip" href="#contenido">Saltar al contenido</a>
+    <div class="progreso" aria-hidden="true"></div>
 
-    <header class="main-header">
-        <div class="header-container">
+    <header class="barra">
+        <div class="barra-in">
+            <a class="barra-logo" href="./" data-cat="inicio" aria-label="MOONFLAG NEWS, portada">
+                <img src="../../img/logo-oficial-moonflag-news.png" alt="" width="120" height="40">
+                <span class="barra-logo-txt">Moonflag News</span>
+            </a>
 
-            <div class="header-left">
-                <div class="logo-container">
-                    <a href="/">
-                        <img src="img/logo-oficial-moonflag-news.png" alt="Logo de MOONFLAG NEWS" class="logo">
-                    </a>
-                </div>
-            </div>
+            <button type="button" class="barra-menu" id="btn-menu" aria-expanded="false" aria-controls="salas">
+                <span class="barra-menu-icono" aria-hidden="true"></span>
+                <span>Salas</span>
+            </button>
 
-            <button class="menu-toggle" id="menu-btn" aria-label="Abrir menú" aria-controls="main-navigation" aria-expanded="false">☰</button>
-
-            <nav class="main-nav" id="main-navigation">
+            <nav class="salas" id="salas" aria-label="Salas">
                 <ul>
-                    <li><a href="#inicio">Inicio</a></li>
-                    <li><a href="#musica">Musica</a></li>
-                    <li><a href="#arte">Arte</a></li>
-                    <li><a href="#conciertos">Conciertos</a></li>
-                    <li><a href="#obras">Obras</a></li>
+                    <li><a href="./" data-cat="inicio">Inicio</a></li>
+                    <li><a href="?cat=musica" data-cat="musica">Música</a></li>
+                    <li><a href="?cat=arte" data-cat="arte">Arte</a></li>
+                    <li><a href="?cat=conciertos" data-cat="conciertos">Conciertos</a></li>
+                    <li><a href="?cat=deportes" data-cat="deportes">Deportes</a></li>
+                    <li class="salas-catalogo"><a href="#catalogo">Catálogo</a></li>
                 </ul>
             </nav>
 
-        </div>
-
-        <div class="header-banner-editorial">
-            <p>MOONFLAG NEWS &mdash; Espacio de exposición para talentos nuevos y emergentes</p>
+            <a class="btn btn-sm barra-cta" href="#convocatoria">Expón tu trabajo</a>
         </div>
     </header>
 
-    <main class="main-content">
-        <div class="content-layout">
-
-            <div class="primary-content">
-                <section id="hero-noticia" class="hero-section">
-                    
-                </section>
-
-                <section class="latest-section">
-                    <h2>Últimas Noticias</h2>
-                    <div id="contenedor-noticias" class="news-grid">
-                        
-                    </div>
-                </section>
+    <main id="contenido" tabindex="-1">
+        <div id="vista" aria-busy="true">
+            <div class="esqueleto" aria-hidden="true">
+                <div class="sk sk-titulo"></div>
+                <div class="sk-fila"><div class="sk sk-img"></div><div class="sk-col"><div class="sk sk-l"></div><div class="sk sk-l"></div><div class="sk sk-s"></div></div></div>
             </div>
-
-            <aside class="sidebar-aside">
-                <div class="aside-card aside-card-menu">
-                    
-                    <img src="img/flag-moon.jpg" alt="Mascota Moonflag Meditando" class="aside-img">
-
-                    <div class="aside-body">
-                        <span class="aside-tag">EN SINTONÍA</span>
-                        <h3>ÍNDICE DE NOTICIAS</h3>
-                        <p>Explora nuestras crónicas:</p>
-                    </div>
-
-                    <ul id="menu-archivo-noticias" class="aside-news-list">
-                        
-                    </ul>
-                </div>
-            </aside>
-
         </div>
     </main>
 
-    <footer class="main-footer">
-        <div class="footer-container">
-
-            <div class="footer-column">
-                <h3>MOONFLAG NEWS</h3>
-                <p>Promovemos el talento y la cultura, damos visibilidad a artistas, creadores y eventos que contribuyen al desarrollo cultural y al fortalecimiento de nuestra identidad.</p>
+    <section class="convocatoria" id="convocatoria" aria-labelledby="t-conv">
+        <div class="conv-in">
+            <div class="conv-mascota">
+                <img src="../../img/flag-moon.jpg" alt="La mascota de Moonflag, una luna meditando" loading="lazy">
             </div>
-
-            <div class="footer-column">
-                <h3>Categorías</h3>
-                <ul>
-                    <li><a href="#inicio">Inicio</a></li>
-                    <li><a href="#musica">Musica</a></li>
-                    <li><a href="#arte">Arte</a></li>
-                    <li><a href="#conciertos">Conciertos</a></li>
-                    <li><a href="#obras">Obras</a></li>
-                </ul>
+            <div class="conv-txt">
+                <h2 id="t-conv">Tu trabajo merece una sala.</h2>
+                <p>Si haces música, arte, escena o cualquier obra que casi nadie ha visto todavía, cuéntanos. MOONFLAG existe para exponer talento nuevo y emergente.</p>
+                <a class="btn btn-claro" href="mailto:kavitkaaligas@outlook.es?subject=Quiero%20exponer%20en%20MOONFLAG%20NEWS">Enviar mi propuesta</a>
             </div>
-
-            <div class="footer-column">
-                <h3>Síguenos</h3>
-                <div class="social-links">
-                    <a href="https://x.com/MOONFLAGNEWS" target="_blank" rel="noopener noreferrer" aria-label="x">X</a>
-                    <a href="https://www.tiktok.com/@moonflag.news" target="_blank" rel="noopener noreferrer" aria-label="TikTok">TikTok</a>
-                    <a href="https://www.instagram.com/moonflagnews/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">Instagram</a>
-                </div>
-                <p class="footer-contact">Contacto: Keyahnewsportal@gmail.com</p>
-            </div>
-
         </div>
+    </section>
 
-        <div class="footer-bottom">
-            <p>&copy; 2026 MOONFLAG NEWS. Todos los derechos reservados.</p>
+    <footer class="pie">
+        <div class="pie-in">
+            <p class="pie-lema">Promovemos el talento y la cultura: damos visibilidad a artistas, creadores y eventos que fortalecen nuestra identidad.</p>
+            <ul class="pie-redes">
+                <li><a href="https://www.instagram.com/moonflagnews/" target="_blank" rel="noopener noreferrer">Instagram</a></li>
+                <li><a href="https://www.tiktok.com/@moonflag.news" target="_blank" rel="noopener noreferrer">TikTok</a></li>
+                <li><a href="https://x.com/MOONFLAGNEWS" target="_blank" rel="noopener noreferrer">X</a></li>
+            </ul>
+            <p class="pie-contacto">Contacto: <a href="mailto:Keyahnewsportal@gmail.com">Keyahnewsportal@gmail.com</a></p>
+            <p class="pie-legal">© 2026 MOONFLAG NEWS. Todos los derechos reservados.</p>
         </div>
     </footer>
 

@@ -1,602 +1,616 @@
-const norm = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+/* =========================================================
+   MOONFLAG NEWS — Propuesta B: "Sala de exposición"
+   Lee ../noticias.json. Rutas: ?id=12 (nota) · ?cat=arte (sala).
+   ========================================================= */
 
-let todasLasNoticias = [];
+const RAIZ = '../';      // dónde está noticias.json
+const RAIZ_IMG = './';   // dónde está la carpeta img/ (en el sitio final: la misma que noticias.json)
+const SALAS = {
+    musica: { nombre: 'Música', intro: 'Voces, beats y proyectos que están empezando a sonar.' },
+    arte: { nombre: 'Arte', intro: 'Obra visual de creadores que vale la pena seguir de cerca.' },
+    conciertos: { nombre: 'Conciertos', intro: 'Lo que pasó en el escenario y por qué importa.' },
+    deportes: { nombre: 'Deportes', intro: 'Atletas emergentes, disciplinas urbanas y el talento que se juega en la cancha.' }
+};
 
-document.addEventListener('DOMContentLoaded', () => {
-    
-    
-    fetch('./noticias.json')
-        .then(respuesta => {
-            if (!respuesta.ok) {
-                throw new Error(`Error HTTP: ${respuesta.status}`);
-            }
-            return respuesta.json();
-        })
-        .then(datos => {
-            todasLasNoticias = datos;
-            
-            
-            renderizarMenuLateral(todasLasNoticias);
+let notas = [];
+let primeraVez = true;
 
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const notaId = urlParams.get('id') || urlParams.get('nota');
+// Vista previa del CMS: ?vista-previa=1 — sin animaciones, datos inyectados por mensaje.
+const MODO_PREVIA = new URLSearchParams(location.search).has('vista-previa');
+let publicadas = [];
 
-            if (notaId) {
-                verArticuloCompleto(notaId, false);
-            } else {
-                mostrarNoticias(todasLasNoticias);
-            }
-        })
-        .catch(error => console.error('Error cargando las noticias de MOONFLAG NEWS:', error));
+/* ---------- Utilidades ---------- */
+const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const rico = (t) => esc(t).replace(/&lt;(\/?)(strong|b|em|i)&gt;/gi, '<$1$2>');
+const ruta = (src) => (/^(https?:)?\//.test(src) ? src : RAIZ_IMG + src);
+const salaDe = (n) => norm(n.categoria);
+const nombreSala = (n) => SALAS[salaDe(n)]?.nombre || n.categoria;
+const recientes = (l) => [...l].sort((a, b) => Number(b.id) - Number(a.id));
+const buscar = (id) => notas.find((n) => String(n.id) === String(id) || n.slug === String(id));
+const quieto = () => MODO_PREVIA || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const num = (n) => (n.id ? `Nº ${String(n.id).padStart(2, '0')}` : 'Nº —');
+const urlDe = ({ id, cat } = {}) => (id ? `?id=${encodeURIComponent(id)}` : cat ? `?cat=${encodeURIComponent(cat)}` : './');
 
-    
-    window.addEventListener('popstate', (event) => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const notaId = urlParams.get('id') || urlParams.get('nota');
+function fecha(f) {
+    const m = String(f ?? '').toLowerCase().match(/(\d{1,2})\s+de\s+([a-záéíóú]+)(?:\s+de)?\s+(\d{4})/);
+    return m ? `${m[1]} de ${m[2]} de ${m[3]}` : String(f ?? '');
+}
+function mesAnio(f) {
+    const m = String(f ?? '').toLowerCase().match(/de\s+([a-záéíóú]+)(?:\s+de)?\s+(\d{4})/);
+    return m ? `${m[1]} de ${m[2]}` : '';
+}
+function minutos(n) {
+    const txt = (n.contenido || []).filter((b) => b.tipo === 'texto').map((b) => b.valor).join(' ');
+    return Math.max(1, Math.round(txt.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length / 200));
+}
 
-        if (notaId) {
-            verArticuloCompleto(notaId, false);
-        } else {
-            mostrarNoticias(todasLasNoticias, false);
-        }
-    });
+const marco = (src, alt = '', clase = '', extra = 'loading="lazy" decoding="async"') =>
+    `<div class="marco ${clase}"><img src="${esc(ruta(src))}" alt="${esc(alt)}" ${extra}></div>`;
 
-    
-    inicializarMenu();
+// Imagen que no carga: el marco muestra un placeholder; el logo cae a texto.
+document.addEventListener('error', (e) => {
+    const img = e.target;
+    if (img.tagName !== 'IMG') return;
+    const logo = img.closest('.barra-logo');
+    if (logo) { logo.classList.add('sin-logo'); return; }
+    img.closest('.marco, .conv-mascota')?.classList.add('sin-imagen');
+}, true);
+
+// Imágenes estáticas que fallaron antes de que este script cargara.
+document.querySelectorAll('.barra-logo img, .conv-mascota img').forEach((img) => {
+    if (img.complete && img.naturalWidth === 0) img.dispatchEvent(new Event('error'));
 });
 
+/* ---------- Navegación ---------- */
+function leerRuta() {
+    const p = new URLSearchParams(location.search);
+    const cat = p.get('cat') ? norm(p.get('cat')) : null;
+    return { id: p.get('id') || p.get('nota'), cat: SALAS[cat] ? cat : null };
+}
 
+function ir(destino, origen = null) {
+    history.pushState(destino, '', urlDe(destino));
+    transicion(() => pintar(true), destino.id ? origen : null);
+}
 
+/* Transición de vista: si el navegador la soporta, la foto de la tarjeta "viaja" a la portada de la nota. */
+function transicion(actualizar, origen) {
+    if (!document.startViewTransition || quieto()) { actualizar(); return; }
+    const marcoOrigen = origen?.closest('.obra, .principal, .tira-item, .plano-sala, .cat-fila, .foco')?.querySelector('.marco');
+    if (marcoOrigen) marcoOrigen.style.viewTransitionName = 'portada';
+    const vt = document.startViewTransition(() => {
+        if (marcoOrigen) marcoOrigen.style.viewTransitionName = '';
+        actualizar();
+    });
+    vt.finished.finally(() => { if (marcoOrigen) marcoOrigen.style.viewTransitionName = ''; });
+}
 
-function renderizarMenuLateral(listaNoticias) {
-    const contenedorMenu = document.getElementById('menu-archivo-noticias');
-    if (!contenedorMenu) return;
+function pintar(desplazar = false) {
+    const { id, cat } = leerRuta();
+    const nota = id && buscar(id);
 
-    contenedorMenu.innerHTML = '';
+    document.body.classList.toggle('en-nota', !!nota);
+    if (nota) vistaNota(nota);
+    else if (cat) vistaSala(cat);
+    else vistaPortada();
 
-    if (listaNoticias.length === 0) {
-        contenedorMenu.innerHTML = `<li style="font-size: 0.8rem; padding: 10px 0; color: #666;">No hay registros disponibles.</li>`;
-        return;
-    }
+    marcarSalas(nota ? salaDe(nota) : cat);
+    document.getElementById('vista').setAttribute('aria-busy', 'false');
+    primeraVez = false;
+    if (desplazar) window.scrollTo({ top: 0, behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
+}
 
-    listaNoticias.forEach(noticia => {
-        const li = document.createElement('li');
-        li.className = 'aside-news-item';
-
-        
-        li.innerHTML = `
-            <a href="#" class="aside-news-link" data-id="${noticia.id}">
-                <img src="${noticia.imagen}" alt="${noticia.titulo}" class="aside-news-thumb">
-                <div class="aside-news-info">
-                    <span class="aside-news-title">${noticia.titulo}</span>
-                    <span class="aside-news-meta">${noticia.categoria} &bull; ${noticia.fecha}</span>
-                </div>
-            </a>
-        `;
-
-        const enlace = li.querySelector('a');
-        enlace.addEventListener('click', (e) => {
-            e.preventDefault();
-            verArticuloCompleto(noticia.id);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-
-        contenedorMenu.appendChild(li);
+function marcarSalas(cat) {
+    document.querySelectorAll('.salas a[data-cat]').forEach((a) => {
+        const activo = cat ? a.dataset.cat === cat : a.dataset.cat === 'inicio';
+        if (activo) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
 }
 
+document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest('a[data-id], a[data-cat]');
+    if (!a) return;
+    e.preventDefault();
+    cerrarMenu();
+    if (a.dataset.id) ir({ id: a.dataset.id }, a);
+    else ir({ cat: a.dataset.cat === 'inicio' ? null : a.dataset.cat });
+});
 
-function mostrarNoticias(listaDeNoticias, actualizarURL = true) {
-    
-    if (actualizarURL) {
-        
-        const urlLimpia = window.location.pathname.replace('index.html', '');
-        history.pushState({}, '', urlLimpia || '/');
+window.addEventListener('popstate', () => transicion(() => pintar(true)));
+
+/* ---------- Menú móvil ---------- */
+const btnMenu = document.getElementById('btn-menu');
+const salasNav = document.getElementById('salas');
+
+function cerrarMenu() {
+    salasNav.classList.remove('abierto');
+    btnMenu.setAttribute('aria-expanded', 'false');
+}
+btnMenu.addEventListener('click', () => {
+    const abrir = !salasNav.classList.contains('abierto');
+    salasNav.classList.toggle('abierto', abrir);
+    btnMenu.setAttribute('aria-expanded', String(abrir));
+    if (abrir) salasNav.querySelector('a')?.focus();
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && salasNav.classList.contains('abierto')) { cerrarMenu(); btnMenu.focus(); }
+});
+document.addEventListener('click', (e) => {
+    if (salasNav.classList.contains('abierto') && !salasNav.contains(e.target) && !btnMenu.contains(e.target)) cerrarMenu();
+});
+// "Catálogo" desde cualquier vista: vuelve a la portada y baja al catálogo.
+salasNav.querySelector('a[href="#catalogo"]').addEventListener('click', (e) => {
+    cerrarMenu();
+    if (!document.getElementById('catalogo')) {
+        e.preventDefault();
+        history.pushState({}, '', './#catalogo');
+        pintar();
+        document.getElementById('catalogo')?.scrollIntoView();
     }
+});
 
-    document.title = 'MOONFLAG NEWS';
+/* ---------- Arranque ---------- */
+fetch(RAIZ + 'noticias.json')
+    .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    .then((datos) => {
+        publicadas = datos.filter((n) => n.estado !== 'borrador');
+        notas = publicadas;
+        pintar();
+        if (location.hash === '#catalogo') document.getElementById('catalogo')?.scrollIntoView();
+        if (MODO_PREVIA && window.parent !== window) window.parent.postMessage({ tipo: 'moonflag:lista' }, location.origin);
+    })
+    .catch((err) => {
+        console.error('MOONFLAG: no se pudo leer noticias.json', err);
+        const v = document.getElementById('vista');
+        v.setAttribute('aria-busy', 'false');
+        v.innerHTML = `
+            <div class="vacio" role="alert">
+                <h2>La sala no abrió</h2>
+                <p>No pudimos leer el archivo de noticias. Revisa tu conexión y vuelve a cargar la página.</p>
+                <button type="button" class="btn" onclick="location.reload()">Volver a cargar</button>
+            </div>`;
+    });
 
-    const contenedorHero = document.getElementById('hero-noticia');
-    const contenedorGrid = document.getElementById('contenedor-noticias');
-    const tituloSeccion = document.querySelector('.latest-section h2');
-    
+/* ---------- Piezas ---------- */
+function ficha(n, { conAutor = false, conLectura = false } = {}) {
+    return `
+        <dl class="ficha">
+            <dt>Catálogo</dt><dd>${num(n)}</dd>
+            <dt>Sala</dt><dd><a href="${urlDe({ cat: salaDe(n) })}" data-cat="${esc(salaDe(n))}">${esc(nombreSala(n))}</a></dd>
+            ${conAutor ? `<dt>Texto</dt><dd>${esc(n.autor)}</dd>` : ''}
+            <dt>Fecha</dt><dd>${esc(fecha(n.fecha))}</dd>
+            ${conLectura ? `<dt>Lectura</dt><dd>${minutos(n)} min</dd>` : ''}
+        </dl>`;
+}
 
-    if (tituloSeccion) {
-        tituloSeccion.style.display = 'block';
-    }
-    
-    if (!contenedorGrid) return;
-
-    if (contenedorHero) contenedorHero.innerHTML = '';
-    contenedorGrid.innerHTML = '';
-
-    if (listaDeNoticias.length === 0) {
-        contenedorGrid.innerHTML = `<p class="no-news">Por el momento no hay noticias en esta sección.</p>`;
-        return;
-    }
-
-    
-    let noticiasOrdenadas = [...listaDeNoticias].sort((a, b) => Number(b.id) - Number(a.id));
-
-    let noticiaPrincipal;
-    let noticiasRestantes = [];
-    let destacadas = [];
-
-    
-    const totalDestacadas = noticiasOrdenadas.length >= 4 ? 3 : 1;
-    destacadas = noticiasOrdenadas.slice(0, totalDestacadas);
-    noticiaPrincipal = destacadas[0];
-    noticiasRestantes = noticiasOrdenadas.slice(totalDestacadas);
-
-    
-    if (contenedorHero && noticiaPrincipal) {
-        contenedorHero.innerHTML = `
-            <div class="hero-card" style="cursor: pointer;">
-                <div class="hero-image-wrapper">
-                    <img src="${noticiaPrincipal.imagen}" alt="${noticiaPrincipal.titulo}">
-                </div>
-                <div class="hero-overlay"></div>
-                <div class="hero-content">
-                    <span class="badge badge-hero">${noticiaPrincipal.categoria}</span>
-                    <h1>${noticiaPrincipal.titulo}</h1>
-                    <p>${noticiaPrincipal.resumen}</p>
-                    <span class="hero-read-more">Leer artículo completo →</span>
-                </div>
+function obra(n) {
+    return `
+        <article class="obra">
+            ${marco(n.imagen)}
+            <div class="cedula">
+                <span class="cedula-num">${num(n)}</span>
+                <h3><a href="${urlDe({ id: n.id })}" data-id="${esc(n.id)}">${esc(n.titulo)}</a></h3>
+                <span class="cedula-pie"><b>${esc(nombreSala(n))}</b>, ${esc(fecha(n.fecha))}</span>
             </div>
-        `;
-
-        const tarjetaHero = contenedorHero.querySelector('.hero-card');
-        if (tarjetaHero) {
-            tarjetaHero.addEventListener('click', () => {
-                verArticuloCompleto(noticiaPrincipal.id);
-            });
-        }
-
-        heroDinamico(contenedorHero, destacadas);
-    }
-
-    
-    noticiasRestantes.forEach(noticia => {
-        const tarjeta = document.createElement('article');
-        tarjeta.className = 'noticia-card';
-        tarjeta.style.cursor = 'pointer';
-        
-        tarjeta.innerHTML = `
-            <img src="${noticia.imagen}" alt="${noticia.titulo}" loading="lazy">
-            <span class="badge">${noticia.categoria}</span>
-            <h3>${noticia.titulo}</h3>
-            <p>${noticia.resumen}</p>
-        `;
-
-        tarjeta.addEventListener('click', () => {
-            verArticuloCompleto(noticia.id);
-        });
-
-        contenedorGrid.appendChild(tarjeta);
-    });
+        </article>`;
 }
 
+// El largo del título decide su tamaño, para que el texto quepa junto a la foto sin descuadrarla.
+const largoTitulo = (t) => (t.length > 110 ? ' titulo-muy-largo' : t.length > 70 ? ' titulo-largo' : '');
 
-function verArticuloCompleto(id, actualizarURL = true) {
-    const contenedorHero = document.getElementById('hero-noticia');
-    const contenedorGrid = document.getElementById('contenedor-noticias');
-    const tituloSeccion = document.querySelector('.latest-section h2');
-    
+function principal(n) {
+    return `
+        <section class="principal${largoTitulo(n.titulo || '')}" aria-label="Obra principal">
+            ${marco(n.imagen, '', '', 'fetchpriority="high"')}
+            <div class="principal-cedula">
+                <h2><a href="${urlDe({ id: n.id })}" data-id="${esc(n.id)}">${esc(n.titulo)}</a></h2>
+                <p>${esc(n.resumen)}</p>
+                ${ficha(n)}
+                <a class="btn" href="${urlDe({ id: n.id })}" data-id="${esc(n.id)}" tabindex="-1">Leer la nota</a>
+            </div>
+        </section>`;
+}
 
-    const noticia = todasLasNoticias.find(item => String(item.id) === String(id) || item.slug === String(id));
+function catalogo(lista, idActivo = null) {
+    return `
+        <section class="catalogo" id="catalogo" aria-labelledby="t-catalogo">
+            <div class="catalogo-cab">
+                <h2 id="t-catalogo">Catálogo</h2>
+                <span>${lista.length} ${lista.length === 1 ? 'obra' : 'obras'}</span>
+            </div>
+            <ol>
+                ${recientes(lista).map((n) => `
+                    <li class="cat-fila">
+                        <a href="${urlDe({ id: n.id })}" data-id="${esc(n.id)}"${String(n.id) === String(idActivo) ? ' aria-current="page"' : ''}>
+                            <span class="cat-num">${num(n)}</span>
+                            <span class="cat-titulo">${esc(n.titulo)}</span>
+                            <span class="cat-sala">${esc(nombreSala(n))}</span>
+                            <span class="cat-fecha">${esc(fecha(n.fecha))}</span>
+                        </a>
+                    </li>`).join('')}
+            </ol>
+        </section>`;
+}
 
-    if (noticia && contenedorGrid) {
-       
-        if (actualizarURL) {
-            history.pushState({ id: noticia.id }, '', `?id=${noticia.id}`);
-        }
+function muro(lista, titulo) {
+    if (!lista.length) return '';
+    return `
+        <section aria-labelledby="t-muro">
+            <div class="muro-cab">
+                <h2 id="t-muro">${esc(titulo)}</h2>
+                <span>${lista.length} ${lista.length === 1 ? 'obra' : 'obras'}</span>
+            </div>
+            <div class="muro">${lista.map(obra).join('')}</div>
+        </section>`;
+}
 
-        document.title = `${noticia.titulo} | MOONFLAG NEWS`;
+/* ---------- Ajuste del rótulo gigante al ancho exacto ---------- */
+function ajustarRotulo() {
+    const t = document.querySelector('.mast-titulo');
+    if (!t) return;
+    t.style.fontSize = '';
+    const base = parseFloat(getComputedStyle(t).fontSize);
+    const ratio = t.clientWidth / t.scrollWidth;
+    if (ratio < 1 || ratio > 1.02) t.style.fontSize = `${base * Math.min(ratio, 1.15) * 0.995}px`;
+}
+document.fonts?.ready.then(ajustarRotulo);
+let relojRotulo;
+window.addEventListener('resize', () => { clearTimeout(relojRotulo); relojRotulo = setTimeout(ajustarRotulo, 100); });
 
-        const ogImage = document.querySelector('meta[property="og:image"]');
-        if (ogImage) {
-            ogImage.setAttribute('content', noticia.imagenSocial || noticia.imagen);
-        }
+/* ---------- Frames premium ---------- */
+function citaDe(n, desde = 0) {
+    if (n.cita) return n.cita.replace(/"([^"]+)"/g, '‘$1’');
+    const texto = (n.contenido || []).filter((b) => b.tipo === 'texto').map((b) => b.valor).join('\n');
+    const frases = texto
+        .replace(/<(strong|b)>[\s\S]*?<\/\1>/gi, '\n')                         // los subtítulos van en negritas: fuera
+        .replace(/<[^>]+>/g, '')
+        .split(/\n+/).map((l) => l.trim()).filter((l) => l.length > 60)
+        .flatMap((l) => l.split(/(?<=[.!?])\s+/))
+        .map((f) => f.trim())
+        .filter((f) => f.length >= 80 && f.length <= 200 && /^[A-ZÁÉÍÓÚÑ¿¡"“]/.test(f) && /[.!?]$/.test(f));
+    const utiles = frases.filter((f) => !/moonflag/i.test(f));
+    return (utiles[Math.min(desde, utiles.length - 1)] || n.resumen).replace(/"([^"]+)"/g, '‘$1’');
+}
 
-        if (contenedorHero) contenedorHero.innerHTML = '';
-        if (tituloSeccion) tituloSeccion.style.display = 'none';
-
-        let bloquesHTML = '';
-        if (noticia.contenido && Array.isArray(noticia.contenido)) {
-            noticia.contenido.forEach(bloque => {
-                if (bloque.tipo === 'texto') {
-                    bloquesHTML += `<p>${bloque.valor}</p>`;
-                } else if (bloque.tipo === 'imagen') {
-                    bloquesHTML += `
-                        <div class="bloque-imagen-container">
-                            <img src="${bloque.valor}" alt="${noticia.titulo}" class="articulo-imagen-secundaria">
-                            ${bloque.pie ? `<p class="pie-de-foto">${bloque.pie}</p>` : ''}
-                        </div>
-                    `;
-                }
-            });
-        } else {
-            bloquesHTML = `<p>${noticia.texto || ''}</p>`;
-        }
-
-        contenedorGrid.innerHTML = `
-            <article class="articulo-completo">
-                <button class="btn-volver" id="btn-regresar">← Volver a últimas noticias</button>
-                <div class="articulo-header">
-                    <span class="badge">${noticia.categoria}</span>
-                    <h1>${noticia.titulo}</h1>
-                    <div class="articulo-meta">
-                        <span>Por <strong>${noticia.autor}</strong></span> | 
-                        <span>${noticia.fecha}</span>
+function foco(n) {
+    return `
+        <section class="foco a-sangre" aria-labelledby="t-foco">
+            <div class="foco-in">
+                ${marco(n.imagen)}
+                <div class="foco-txt">
+                    <p class="foco-etiqueta" id="t-foco">Pieza en foco</p>
+                    <blockquote>
+                        <p>“${esc(citaDe(n))}”</p>
+                        <footer><b>${esc(n.autor)}</b>, sobre ${esc(n.titulo.split(':')[0])}</footer>
+                    </blockquote>
+                    <div class="foco-nota">
+                        <h3><a href="${urlDe({ id: n.id })}" data-id="${esc(n.id)}">${esc(n.titulo)}</a></h3>
+                        <a class="btn btn-claro" href="${urlDe({ id: n.id })}" data-id="${esc(n.id)}" tabindex="-1">Leer la nota</a>
                     </div>
                 </div>
-                <img src="${noticia.imagen}" alt="${noticia.titulo}" class="articulo-imagen">
-                <div class="articulo-cuerpo">
-                    ${bloquesHTML}
-                </div>
-            </article>
-        `;
+            </div>
+        </section>`;
+}
 
-        const btnRegresar = document.getElementById('btn-regresar');
-        if (btnRegresar) {
-            btnRegresar.addEventListener('click', () => {
-                mostrarNoticias(todasLasNoticias);
+function archivoVisual() {
+    const fotos = recientes(notas).flatMap((n) =>
+        (n.contenido || []).filter((b) => b.tipo === 'imagen' && b.pie).map((b) => ({ n, src: b.valor, pie: b.pie })));
+    if (fotos.length < 3) return '';
+    const lista = fotos.slice(0, 12);
+    return `
+        <section class="archivo" aria-labelledby="t-archivo">
+            <div class="archivo-cab">
+                <div>
+                    <h2 id="t-archivo">Archivo visual</h2>
+                    <p>Las fotografías que acompañan nuestras notas.</p>
+                </div>
+                <div class="archivo-ctrl">
+                    <button type="button" class="ctrl" data-tira="-1" aria-label="Fotos anteriores">←</button>
+                    <button type="button" class="ctrl" data-tira="1" aria-label="Fotos siguientes">→</button>
+                </div>
+            </div>
+            <div class="tira a-sangre" tabindex="0" role="region" aria-label="Archivo visual, desliza para ver más">
+                ${lista.map(({ n, src, pie }) => `
+                    <figure class="tira-item">
+                        ${marco(src, pie)}
+                        <figcaption class="cedula">
+                            <span class="cedula-num">${num(n)}, ${esc(nombreSala(n))}</span>
+                            <a href="${urlDe({ id: n.id })}" data-id="${esc(n.id)}">${esc(n.titulo.split(':')[0].trim())}</a>
+                            <small>${esc(pie)}</small>
+                        </figcaption>
+                    </figure>`).join('')}
+            </div>
+        </section>`;
+}
+
+function recorrido() {
+    return `
+        <section class="recorrido" aria-labelledby="t-recorrido">
+            <div class="recorrido-cab">
+                <h2 id="t-recorrido">Recorrido por salas</h2>
+                <p>Elige una sala y recorre todo lo que hemos expuesto en ella.</p>
+            </div>
+            <nav class="plano" aria-label="Salas de la exposición">
+                ${Object.entries(SALAS).map(([clave, s]) => {
+                    const obras = recientes(notas.filter((n) => salaDe(n) === clave));
+                    return `
+                        <a class="plano-sala" href="${urlDe({ cat: clave })}" data-cat="${clave}">
+                            ${obras.length ? marco(obras[0].imagen) : '<div class="plano-vacia"><span>Próximamente</span></div>'}
+                            <span class="plano-txt">
+                                <strong>${esc(s.nombre)}</strong>
+                                <span>${obras.length ? `${obras.length} ${obras.length === 1 ? 'obra' : 'obras'}` : 'En montaje'}</span>
+                            </span>
+                        </a>`;
+                }).join('')}
+            </nav>
+        </section>`;
+}
+
+function activarTira(v) {
+    const tira = v.querySelector('.tira');
+    if (!tira) return;
+    const [ant, sig] = v.querySelectorAll('[data-tira]');
+    const actualizar = () => {
+        ant.disabled = tira.scrollLeft < 8;
+        sig.disabled = tira.scrollLeft + tira.clientWidth >= tira.scrollWidth - 8;
+    };
+    v.querySelectorAll('[data-tira]').forEach((b) => b.addEventListener('click', () => {
+        const paso = tira.querySelector('.tira-item').offsetWidth + 24;
+        tira.scrollBy({ left: Number(b.dataset.tira) * paso * 2, behavior: quieto() ? 'auto' : 'smooth' });
+    }));
+    tira.addEventListener('scroll', actualizar, { passive: true });
+    actualizar();
+
+    // Arrastrar con el ratón (en táctil ya se desliza de forma nativa).
+    let x0 = 0, s0 = 0, movido = false, activo = false;
+    tira.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'mouse' || e.button !== 0) return;
+        activo = true; movido = false; x0 = e.clientX; s0 = tira.scrollLeft;
+    });
+    tira.addEventListener('pointermove', (e) => {
+        if (!activo) return;
+        const dx = e.clientX - x0;
+        if (!movido && Math.abs(dx) > 5) { movido = true; tira.classList.add('arrastrando'); tira.setPointerCapture(e.pointerId); }
+        if (movido) tira.scrollLeft = s0 - dx;
+    });
+    const soltar = () => {
+        if (!activo) return;
+        activo = false;
+        if (!movido) return;
+        // Al soltar, se acomoda a la foto más cercana.
+        tira.classList.remove('arrastrando');
+        const paso = tira.querySelector('.tira-item').offsetWidth + 24;
+        tira.scrollTo({ left: Math.round(tira.scrollLeft / paso) * paso, behavior: quieto() ? 'auto' : 'smooth' });
+    };
+    tira.addEventListener('pointerup', soltar);
+    tira.addEventListener('pointercancel', soltar);
+    tira.addEventListener('click', (e) => { if (movido) { e.preventDefault(); e.stopPropagation(); movido = false; } }, true);
+}
+
+// En pantallas táctiles no hay "hover": la foto que pasa por el centro de la pantalla toma color.
+let observadorCentro = null;
+function activarCentro(raiz) {
+    observadorCentro?.disconnect();
+    if (!matchMedia('(hover: none)').matches || !('IntersectionObserver' in window)) return;
+    observadorCentro = new IntersectionObserver((entradas) => {
+        entradas.forEach(({ isIntersecting, target }) => target.classList.toggle('en-centro', isIntersecting));
+    }, { rootMargin: '-42% 0px -42% 0px' });
+    raiz.querySelectorAll('.obra, .principal, .foco, .plano-sala, .nota-cuerpo figure').forEach((el) => observadorCentro.observe(el));
+}
+
+// Revelado al entrar en pantalla: una vez por foto.
+let observadorRevelado = null;
+function activarRevelado(raiz) {
+    // Sin animación si el usuario la pidió reducida, o si la pestaña está oculta (el observador no correría).
+    if (quieto() || document.hidden || !('IntersectionObserver' in window)) return;
+    observadorRevelado?.disconnect();
+    observadorRevelado = new IntersectionObserver((entradas) => {
+        entradas.forEach(({ isIntersecting, target }) => {
+            if (!isIntersecting) return;
+            observadorRevelado.unobserve(target);
+            target.classList.add('revelando');
+            void target.offsetWidth; // fija el estado inicial antes de transicionar
+            target.classList.remove('por-revelar');
+            setTimeout(() => target.classList.remove('revelando'), 1200);
+        });
+    }, { threshold: 0.3 });
+    raiz.querySelectorAll('.marco:not(.nota-portada)').forEach((m) => {
+        const r = m.getBoundingClientRect();
+        if (r.top < innerHeight * 0.9 && r.bottom > 0) return; // lo visible al cargar no parpadea
+        m.classList.add('por-revelar');
+        observadorRevelado.observe(m);
+    });
+}
+
+/* ---------- Vistas ---------- */
+function vistaPortada() {
+    document.title = 'MOONFLAG NEWS';
+    const orden = recientes(notas);
+    const salasConObra = new Set(notas.map(salaDe)).size;
+    const v = document.getElementById('vista');
+    const notaPrincipal = orden.find((n) => n.destacada) || orden[0];
+    const notaFoco = orden.find((n) => n.foco && n !== notaPrincipal) || orden.find((n) => n !== notaPrincipal);
+    const resto = orden.filter((n) => n !== notaPrincipal && n !== notaFoco);
+
+    v.innerHTML = `
+        <header class="mast${primeraVez && !quieto() ? ' entra' : ''}">
+            <div class="mast-folio">
+                <p class="mast-lema">Espacio de exposición para talentos nuevos y emergentes</p>
+                <p class="mast-edicion">Edición de ${esc(mesAnio(orden[0]?.fecha))}</p>
+            </div>
+            <h1 class="mast-titulo" aria-label="MOONFLAG NEWS">
+                <span aria-hidden="true">M</span><span class="mast-luna" aria-hidden="true"></span><span aria-hidden="true">ONFLAG</span>
+            </h1>
+            <div class="mast-datos">
+                <span>Música, arte, conciertos y deportes</span>
+                <span>${notas.length} obras en exhibición</span>
+                <span>${salasConObra} de ${Object.keys(SALAS).length} salas abiertas</span>
+            </div>
+        </header>
+        ${notaPrincipal ? principal(notaPrincipal) : ''}
+        ${notaFoco ? foco(notaFoco) : ''}
+        ${muro(resto.slice(0, 10), 'En el muro')}
+        ${archivoVisual()}
+        ${recorrido()}
+        ${catalogo(notas)}`;
+    ajustarRotulo();
+    activarTira(v);
+    activarRevelado(v);
+    activarCentro(v);
+}
+
+function vistaSala(cat) {
+    const lista = recientes(notas.filter((n) => salaDe(n) === cat));
+    document.title = `${SALAS[cat].nombre} | MOONFLAG NEWS`;
+    const v = document.getElementById('vista');
+
+    const cab = `
+        <header class="sala-cab">
+            <p>Sala</p>
+            <h1>${esc(SALAS[cat].nombre)}</h1>
+            <div class="sala-cab-pie">
+                <p>${esc(SALAS[cat].intro)}</p>
+                <span>${lista.length} ${lista.length === 1 ? 'obra' : 'obras'}</span>
+            </div>
+        </header>`;
+
+    if (!lista.length) {
+        v.innerHTML = `${cab}
+            <div class="vacio">
+                <h2>Esta sala todavía está vacía</h2>
+                <p>Estamos preparando las primeras notas de ${esc(SALAS[cat].nombre)}. Mientras tanto, recorre lo más reciente.</p>
+                <a class="btn" href="./" data-cat="inicio">Ir a la portada</a>
+            </div>`;
+        return;
+    }
+
+    v.innerHTML = `${cab}${principal(lista[0])}${muro(lista.slice(1), 'Más en esta sala')}${recorrido()}`;
+    activarRevelado(v);
+    activarCentro(v);
+}
+
+function vistaNota(n) {
+    document.title = `${n.titulo} | MOONFLAG NEWS`;
+    const v = document.getElementById('vista');
+
+    let parrafosVistos = 0;
+    let citaPuesta = false;
+    const cita = citaDe(n, 3); // una frase de más adelante, no la de apertura
+    const totalParrafos = (n.contenido || []).filter((b) => b.tipo === 'texto')
+        .reduce((t, b) => t + String(b.valor).split(/\n+/).filter((l) => l.trim()).length, 0);
+    if ((n.contenido || []).some((b) => b.tipo === 'cita')) citaPuesta = true; // el editor ya puso sus citas
+
+    const cuerpo = Array.isArray(n.contenido)
+        ? n.contenido.map((b) => {
+            if (b.tipo === 'subtitulo') return `<h2 class="subtitulo">${esc(b.valor)}</h2>`;
+            if (b.tipo === 'cita') return `<blockquote class="cita-media"><p>“${esc(b.valor)}”</p></blockquote>`;
+            if (b.tipo === 'texto' && n.v === 2) {
+                parrafosVistos++;
+                let html = `<p>${rico(b.valor)}</p>`;
+                if (!citaPuesta && totalParrafos >= 6 && parrafosVistos === 3 && cita) {
+                    citaPuesta = true;
+                    html += `<blockquote class="cita-media" aria-hidden="true"><p>“${esc(cita)}”</p></blockquote>`;
+                }
+                return html;
+            }
+            if (b.tipo === 'texto') {
+                return String(b.valor).split(/\n+/).map((l) => l.trim()).filter(Boolean).map((linea) => {
+                    const plano = linea.replace(/<[^>]+>/g, '').trim();
+                    const esSubtitulo = plano.length <= 90 && plano.split(/\s+/).length >= 2 && !/[.!?…:;,»"”)]$/.test(plano);
+                    if (esSubtitulo) return `<h2 class="subtitulo">${esc(plano)}</h2>`;
+                    parrafosVistos++;
+                    let html = `<p>${rico(linea)}</p>`;
+                    if (!citaPuesta && totalParrafos >= 6 && parrafosVistos === 3 && cita) {
+                        citaPuesta = true;
+                        html += `<blockquote class="cita-media" aria-hidden="true"><p>“${esc(cita)}”</p></blockquote>`;
+                    }
+                    return html;
+                }).join('');
+            }
+            if (b.tipo === 'imagen') return `
+                <figure>
+                    ${marco(b.valor, b.pie || n.titulo)}
+                    ${b.pie ? `<figcaption>${esc(b.pie)}</figcaption>` : ''}
+                </figure>`;
+            return '';
+        }).join('')
+        : `<p>${rico(n.texto || '')}</p>`;
+
+    const relacionadas = recientes(notas.filter((x) => salaDe(x) === salaDe(n) && String(x.id) !== String(n.id))).slice(0, 3);
+
+    v.innerHTML = `
+        <article class="nota">
+            <a class="nota-volver" href="./" data-cat="inicio">Volver a la portada</a>
+            <header class="nota-cab">
+                <p class="nota-kicker"><a href="${urlDe({ cat: salaDe(n) })}" data-cat="${esc(salaDe(n))}">${esc(nombreSala(n))}</a><span>${num(n)}</span><span>${esc(fecha(n.fecha))}</span></p>
+                <h1 tabindex="-1">${esc(n.titulo)}</h1>
+                ${n.resumen ? `<p class="nota-entrada">${esc(n.resumen)}</p>` : ''}
+            </header>
+            <aside class="nota-lateral" aria-label="Ficha de la nota">
+                <div class="nota-lateral-in">
+                    ${ficha(n, { conAutor: true, conLectura: true })}
+                    <div class="compartir">
+                        <p>Compartir</p>
+                        <a class="btn btn-sm btn-borde" target="_blank" rel="noopener noreferrer"
+                           href="https://x.com/intent/post?text=${encodeURIComponent(n.titulo + ' | MOONFLAG NEWS')}&url=${encodeURIComponent(location.href)}">Publicar en X</a>
+                        ${navigator.share ? '<button type="button" class="btn btn-sm btn-borde" data-compartir>Más opciones</button>' : ''}
+                        <button type="button" class="btn btn-sm" data-copiar>Copiar enlace</button>
+                        <span class="sr-only" aria-live="polite" data-aviso></span>
+                    </div>
+                </div>
+            </aside>
+            ${marco(n.imagen, n.titulo, `nota-portada${quieto() || document.startViewTransition ? '' : ' revelar'}`, 'fetchpriority="high"')}
+            <div class="nota-cuerpo">${cuerpo}<p class="fin" aria-hidden="true"><span class="fin-luna"></span></p></div>
+        </article>
+        ${relacionadas.length ? `<div class="mas">${muro(relacionadas, `Más en la sala de ${nombreSala(n)}`)}</div>` : ''}
+        ${catalogo(notas, n.id)}`;
+
+    const aviso = v.querySelector('[data-aviso]');
+    v.querySelector('[data-copiar]').addEventListener('click', async (e) => {
+        const b = e.currentTarget;
+        try { await navigator.clipboard.writeText(location.href); b.textContent = 'Enlace copiado'; }
+        catch { b.textContent = 'Copia la URL de arriba'; }
+        aviso.textContent = b.textContent;
+        setTimeout(() => { b.textContent = 'Copiar enlace'; }, 2000);
+    });
+    v.querySelector('[data-compartir]')?.addEventListener('click', () => {
+        navigator.share({ title: n.titulo, url: location.href }).catch(() => {});
+    });
+
+    v.querySelector('.nota-portada').style.viewTransitionName = 'portada';
+    setTimeout(() => { const p = v.querySelector('.nota-portada'); if (p) p.style.viewTransitionName = ''; }, 400);
+    activarRevelado(v);
+    activarCentro(v);
+    requestAnimationFrame(() => v.querySelector('h1')?.focus({ preventScroll: true }));
+}
+
+
+/* ---------- Vista previa en vivo desde el CMS ---------- */
+if (MODO_PREVIA) {
+    document.documentElement.classList.add('modo-previa');
+    window.addEventListener('message', (e) => {
+        if (e.origin !== location.origin || !e.data || e.data.tipo !== 'moonflag:vista-previa') return;
+        const { nota, portada } = e.data;
+        let lista = publicadas.map((n) => ({ ...n }));
+        if (nota) {
+            const i = lista.findIndex((n) => String(n.id) === String(nota.id));
+            if (i >= 0) lista[i] = nota; else lista.push(nota);
+        }
+        if (portada) {
+            lista.forEach((n) => {
+                n.destacada = String(n.id) === String(portada.principal);
+                n.foco = String(n.id) === String(portada.foco);
             });
         }
-
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (!noticia && todasLasNoticias.length > 0) {
-        mostrarNoticias(todasLasNoticias);
-    }
-}
-
-
-function inicializarMenu() {
-    const enlacesCategorias = document.querySelectorAll('.main-nav a, .footer-column a[href^="#"]');
-    const menuBtn = document.getElementById('menu-btn');
-    const mainNav = document.getElementById('main-navigation');
-
-    enlacesCategorias.forEach(enlace => {
-        enlace.addEventListener('click', (evento) => {
-            const categoriaSeleccionada = enlace.textContent.trim();
-
-            if (['Inicio', 'Musica', 'Música', 'Arte', 'Conciertos', 'Obras'].includes(categoriaSeleccionada)) {
-                evento.preventDefault();
-
-                if (categoriaSeleccionada === 'Inicio') {
-                    mostrarNoticias(todasLasNoticias);
-                } else {
-                    const noticiasFiltradas = todasLasNoticias.filter(noticia => 
-                        norm(noticia.categoria) === norm(categoriaSeleccionada)
-                    );
-                    mostrarNoticias(noticiasFiltradas);
-                }
-
-                if (mainNav) mainNav.classList.remove('active');
-                if (menuBtn) menuBtn.textContent = '☰';
-                
-                const seccionMain = document.querySelector('.main-content');
-                if (seccionMain) {
-                    seccionMain.scrollIntoView({ behavior: 'smooth' });
-                }
-            }
-        });
+        notas = lista;
+        const destino = nota ? `?vista-previa=1&id=${encodeURIComponent(nota.id || 'nueva')}` : '?vista-previa=1';
+        if (nota && !nota.id) nota.id = 'nueva';
+        history.replaceState({}, '', destino);
+        const y = window.scrollY;
+        pintar();
+        window.scrollTo(0, y);
     });
-
-    if (menuBtn && mainNav) {
-        menuBtn.addEventListener('click', () => {
-            mainNav.classList.toggle('active');
-            const abierto = mainNav.classList.contains('active');
-            menuBtn.textContent = abierto ? '✕' : '☰';
-            menuBtn.setAttribute('aria-expanded', abierto);
-        });
-    }
-}
-
-/* MOONFLAG NEWS — mejoras.js
-   Cárgalo DESPUÉS de script.js: <script src="mejoras.js"></script>
-   Usa la variable global `todasLasNoticias` y la función `verArticuloCompleto` de script.js. */
-
-(function () {
-    const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-    const idActual = () => {
-        const p = new URLSearchParams(location.search);
-        return p.get('id') || p.get('nota');
-    };
-
-    const buscar = (id) => todasLasNoticias.find(
-        (n) => String(n.id) === String(id) || n.slug === String(id)
-    );
-
-    /* ---- Elementos fijos: progreso y volver arriba ---- */
-    const barra = document.createElement('div');
-    barra.className = 'progreso-lectura';
-    barra.setAttribute('aria-hidden', 'true');
-
-    const btnArriba = document.createElement('button');
-    btnArriba.className = 'volver-arriba';
-    btnArriba.setAttribute('aria-label', 'Volver arriba');
-    btnArriba.textContent = '↑';
-    btnArriba.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-
-    document.addEventListener('DOMContentLoaded', () => {
-        document.body.append(barra, btnArriba);
-        window.addEventListener('scroll', alHacerScroll, { passive: true });
-        iniciarCuandoHayDatos();
-    });
-
-    function alHacerScroll() {
-        btnArriba.classList.toggle('visible', window.scrollY > 600);
-
-        const cuerpo = document.querySelector('.articulo-completo');
-        if (!cuerpo) { barra.style.width = '0'; return; }
-        const inicio = cuerpo.offsetTop;
-        const total = cuerpo.offsetHeight - window.innerHeight;
-        const avance = total > 0 ? (window.scrollY - inicio) / total : 0;
-        barra.style.width = Math.min(Math.max(avance, 0), 1) * 100 + '%';
-    }
-
-    /* ---- Espera a que script.js termine de cargar noticias.json ---- */
-    function iniciarCuandoHayDatos() {
-        let intentos = 0;
-        const reloj = setInterval(() => {
-            intentos++;
-            if (typeof todasLasNoticias !== 'undefined' && todasLasNoticias.length) {
-                clearInterval(reloj);
-                crearTicker();
-                crearBandaTalento();
-                vigilarContenido();
-            } else if (intentos > 80) {
-                clearInterval(reloj); // 8 s sin datos: no hacemos nada
-            }
-        }, 100);
-    }
-
-    /* ---- Frame 1: ticker "Lo último" ---- */
-    function crearTicker() {
-        const cabecera = document.querySelector('.main-header');
-        if (!cabecera) return;
-
-        const ultimas = [...todasLasNoticias]
-            .sort((a, b) => Number(b.id) - Number(a.id))
-            .slice(0, 6);
-
-        const botones = ultimas
-            .map((n) => `<button type="button" data-id="${esc(n.id)}">${esc(n.titulo)}</button>`)
-            .join('');
-
-        const ticker = document.createElement('div');
-        ticker.className = 'ticker';
-        ticker.innerHTML = `
-            <span class="ticker-label">Lo último</span>
-            <div class="ticker-viewport">
-                <div class="ticker-track">${botones}${botones}</div>
-            </div>`;
-
-        ticker.addEventListener('click', (e) => {
-            const b = e.target.closest('button[data-id]');
-            if (b) verArticuloCompleto(b.dataset.id);
-        });
-
-        cabecera.appendChild(ticker);
-    }
-
-    /* ---- Frame 3: banda para talentos emergentes ---- */
-    function crearBandaTalento() {
-        const hero = document.getElementById('hero-noticia');
-        if (!hero) return;
-
-        const banda = document.createElement('section');
-        banda.className = 'cta-talento';
-        banda.setAttribute('aria-label', 'Convocatoria para artistas');
-        banda.innerHTML = `
-            <div>
-                <h2>¿Eres artista o creador emergente?</h2>
-                <p>Cuéntanos qué haces y te damos un espacio para mostrar tu trabajo.</p>
-            </div>
-            <a href="mailto:kavitkaaligas@outlook.es?subject=Quiero%20aparecer%20en%20MOONFLAG%20NEWS">Escríbenos</a>`;
-
-        hero.insertAdjacentElement('afterend', banda);
-    }
-
-    /* ---- Observa cuándo se abre o se cierra un artículo ---- */
-    function vigilarContenido() {
-        const contenedor = document.getElementById('contenedor-noticias');
-        if (!contenedor) return;
-
-        const revisar = () => {
-            const articulo = contenedor.querySelector('.articulo-completo');
-            document.body.classList.toggle('en-articulo', !!articulo);
-            if (articulo && !articulo.querySelector('.articulo-extras')) {
-                agregarExtras(articulo);
-            }
-            alHacerScroll();
-        };
-
-        new MutationObserver(revisar).observe(contenedor, { childList: true });
-        revisar();
-    }
-
-    /* ---- Frame 5: compartir + seguir leyendo ---- */
-    function agregarExtras(articulo) {
-        const noticia = buscar(idActual());
-        if (!noticia) return;
-
-        const url = location.href;
-        const texto = encodeURIComponent(`${noticia.titulo} | MOONFLAG NEWS`);
-
-        const relacionadas = todasLasNoticias
-            .filter((n) => String(n.id) !== String(noticia.id) && n.categoria === noticia.categoria)
-            .sort((a, b) => Number(b.id) - Number(a.id))
-            .slice(0, 3);
-
-        const tarjetas = relacionadas.map((n) => `
-            <a class="relacionada" href="?id=${esc(n.id)}" data-id="${esc(n.id)}">
-                <img src="${esc(n.imagen)}" alt="" loading="lazy">
-                <strong>${esc(n.titulo)}</strong>
-            </a>`).join('');
-
-        const extras = document.createElement('div');
-        extras.className = 'articulo-extras';
-        extras.innerHTML = `
-            <div class="compartir">
-                <span>Compartir</span>
-                <button type="button" data-red="https://www.instagram.com/">Instagram</button>
-                <a href="https://x.com/intent/post?text=${texto}&url=${encodeURIComponent(url)}" target="_blank" rel="noopener noreferrer">X</a>
-                <button type="button" data-red="https://www.tiktok.com/">TikTok</button>
-                <button type="button" data-copiar>Copiar enlace</button>
-            </div>
-            ${tarjetas ? `<div class="relacionadas"><h3>Sigue leyendo</h3><div class="relacionadas-grid">${tarjetas}</div></div>` : ''}`;
-
-        extras.addEventListener('click', async (e) => {
-            const rel = e.target.closest('.relacionada');
-            if (rel) {
-                e.preventDefault();
-                verArticuloCompleto(rel.dataset.id);
-                return;
-            }
-            const red = e.target.closest('[data-red]');
-            if (red) {
-                if (navigator.share) {
-                    try {
-                        await navigator.share({
-                            title: noticia.titulo,
-                            text: `${noticia.titulo} | MOONFLAG NEWS`,
-                            url: location.href
-                        });
-                        return;
-                    } catch (err) {
-                        if (err.name === 'AbortError') return;
-                    }
-                }
-                const nombre = red.textContent;
-                window.open(red.dataset.red, '_blank', 'noopener');
-                try {
-                    await navigator.clipboard.writeText(location.href);
-                    red.textContent = '¡Enlace copiado!';
-                } catch {
-                    red.textContent = 'No se pudo copiar';
-                }
-                setTimeout(() => (red.textContent = nombre), 2000);
-                return;
-            }
-            const copiar = e.target.closest('[data-copiar]');
-            if (copiar) {
-                try {
-                    await navigator.clipboard.writeText(location.href);
-                    copiar.textContent = '¡Enlace copiado!';
-                } catch {
-                    copiar.textContent = 'No se pudo copiar';
-                }
-                setTimeout(() => (copiar.textContent = 'Copiar enlace'), 2000);
-            }
-        });
-
-        articulo.appendChild(extras);
-    }
-})();
-
-
-/* ---------- Hero dinámico: destacadas con lunas ---------- */
-function escaparHTML(t) {
-    return String(t ?? '').replace(/[&<>"']/g, (c) =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-function heroDinamico(contenedor, lista) {
-    const base = contenedor.querySelector('.hero-card');
-    if (!base || lista.length < 2) return;
-
-    const DURACION = 7000;
-    const card = base.cloneNode(false);
-    card.classList.add('hero-dinamico');
-    card.style.setProperty('--hero-dur', DURACION + 'ms');
-    card.setAttribute('tabindex', '0');
-    card.setAttribute('role', 'link');
-
-    const slidesHTML = lista.map((n, i) => `
-        <div class="hero-slide${i === 0 ? ' is-active' : ''}"${i === 0 ? '' : ' aria-hidden="true"'}>
-            <div class="hero-image-wrapper"><img src="${escaparHTML(n.imagen)}" alt="${escaparHTML(n.titulo)}"></div>
-            <div class="hero-overlay"></div>
-            <div class="hero-content">
-                <span class="badge badge-hero">${escaparHTML(n.categoria)}</span>
-                <h1>${escaparHTML(n.titulo)}</h1>
-                <p>${escaparHTML(n.resumen)}</p>
-                <span class="hero-read-more">Leer artículo completo →</span>
-            </div>
-        </div>`).join('');
-
-    const lunasHTML = lista.map((n, i) =>
-        `<button type="button" class="luna" data-i="${i}" aria-label="Ver destacada ${i + 1}"><i></i></button>`).join('');
-
-    card.innerHTML = slidesHTML + `<div class="hero-lunas"><span class="hero-contador"></span>${lunasHTML}</div>`;
-    base.replaceWith(card);
-
-    const slides = [...card.querySelectorAll('.hero-slide')];
-    const lunas = [...card.querySelectorAll('.luna')];
-    const contador = card.querySelector('.hero-contador');
-    const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let actual = 0;
-    let reloj = null;
-
-    function programar() {
-        clearTimeout(reloj);
-        if (sinMovimiento) return;
-        reloj = setTimeout(() => {
-            if (!document.body.contains(card)) return;
-            mostrar((actual + 1) % lista.length);
-        }, DURACION);
-    }
-
-    function reiniciarLuna() {
-        lunas[actual].classList.remove('is-active');
-        void card.offsetWidth;
-        lunas[actual].classList.add('is-active');
-    }
-
-    function mostrar(i) {
-        actual = i;
-        slides.forEach((s, j) => {
-            s.classList.toggle('is-active', j === i);
-            s.setAttribute('aria-hidden', j === i ? 'false' : 'true');
-        });
-        lunas.forEach((l, j) => {
-            l.classList.remove('is-active');
-            l.classList.toggle('is-done', j < i);
-        });
-        void card.offsetWidth;
-        lunas[i].classList.add('is-active');
-        contador.textContent = String(i + 1).padStart(2, '0') + ' / ' + String(lista.length).padStart(2, '0');
-        programar();
-    }
-
-    function pausar() { clearTimeout(reloj); card.classList.add('pausado'); }
-    function reanudar() { card.classList.remove('pausado'); reiniciarLuna(); programar(); }
-
-    card.addEventListener('mouseenter', pausar);
-    card.addEventListener('mouseleave', reanudar);
-    card.addEventListener('focusin', pausar);
-    card.addEventListener('focusout', reanudar);
-
-    card.addEventListener('click', (e) => {
-        const luna = e.target.closest('.luna');
-        if (luna) { mostrar(Number(luna.dataset.i)); return; }
-        verArticuloCompleto(lista[actual].id);
-    });
-    card.addEventListener('keydown', (e) => {
-        if (e.target === card && e.key === 'Enter') verArticuloCompleto(lista[actual].id);
-    });
-
-    let inicioX = 0;
-    card.addEventListener('touchstart', (e) => { inicioX = e.touches[0].clientX; }, { passive: true });
-    card.addEventListener('touchend', (e) => {
-        const dx = e.changedTouches[0].clientX - inicioX;
-        if (Math.abs(dx) < 40) return;
-        mostrar((actual + (dx < 0 ? 1 : lista.length - 1)) % lista.length);
-    });
-
-    mostrar(0);
 }
