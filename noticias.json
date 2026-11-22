@@ -434,7 +434,42 @@
                 "valor": "<strong>EL TRACK FINAL</strong>\n\nSi tuviera que congelar un solo instante de esa época —una playa, la brisa de la madrugada, la espera infinita—, <strong>me quedaría con esos minutos inmóviles en el lineup. </strong>Ese silencio denso antes de que un set de olas colapse y ruede con la fuerza indomable del mar. Esa sensación es irrepetible.\n\nY si la cinta tuviera que cerrarse con una última canción sonando en los créditos, sería<strong> \"Goodbye Stranger\", de Supertramp. </strong>Es un tema que me conecta de inmediato con mis papás, que me atraviesa y me despierta una nostalgia luminosa. Me hace sentir algo indescriptible. Y con eso, la cinta se apaga."
             }
         ]
+    },
+
+     {
+        "id": 18,
+        "titulo": "Olas, arena y ganas de ganar: así se vivió el cuarto día del Pacífico Surf Open Cerritos México",
+        "categoria": "DEPORTES",
+        "resumen": "Con un oleaje generoso en la costa mexicana, la cuarta jornada del certamen ofreció sets limpios, maniobras de alto voltaje y una energía en la playa que marcó el pulso competitivo.",
+        "imagen": "img/cerritos-1.jpg",
+        "autor": "ISAAC MIRONOV",
+        "fecha": "22 DE NOVIEMBRE DE 2026",
+        "contenido": [
+            {
+                "tipo": "texto",
+                "valor": "Hay jornadas en las que el mar y los competidores hablan exactamente el mismo idioma, y el cuarto día del <strong>Pacífico Surf Open Cerritos México</strong> fue una prueba contundente de ello. Desde temprano, el oleaje en la playa mexicana respondió con fuerza y constancia, abriendo la puerta para que los atletas encontraran buenos sets y convirtieran cada serie en un espectáculo de técnica, velocidad y carácter sobre la tabla."
+            },
+            {
+                "tipo": "imagen",
+                "valor": "img/cerritos-2.jpg",
+                "pie": "Momentos de acción durante el tercer día en la playa mexicana. Créditos de fotografía: Pacífico Surf Open Cerritos México y World Surf League (WSL) / Vía canales oficiales."
+            },
+            {
+                "tipo": "texto",
+                "valor": "En el agua no hubo margen para la duda. Con cada serie entrando al ritmo de las olas, los surfistas supieron leer los tiempos del mar para atacar en el instante preciso, encadenar maniobras sólidas y defender su lugar en el certamen. Mientras tanto, sobre la arena, el ambiente acompañó cada movimiento con esa mezcla única de tensión competitiva y celebración costera que resume el espíritu del día: <strong>olas, arena y ganas de ganar.</strong>"
+            },
+            {
+                "tipo": "imagen",
+                "valor": "img/cerritos-3.jpg",
+                "pie": "Momentos de acción durante el tercer día en la playa mexicana. Créditos de fotografía: Pacífico Surf Open Cerritos México y World Surf League (WSL) / Vía canales oficiales."
+            },
+            {
+                "tipo": "texto",
+                "valor": "Lo ocurrido en esta cuarta fecha no solo dejó postales memorables dentro del agua, sino que elevó la vara de toda la competencia. Con el mar mostrando su mejor cara y el nivel competitivo en su punto más alto, el <strong>Pacífico Surf Open Cerritos México</strong> deja el escenario servido para un cierre de alto impacto, donde cada ola será decisiva y solo quienes mantengan el temple lograrán quedarse con la victoria."
+            }
+        ]
     }
+
 
 
 
