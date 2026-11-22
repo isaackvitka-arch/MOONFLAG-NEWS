@@ -472,16 +472,16 @@
 
     {
         "id": 19,
-        "titulo": "Jhony Corzo pisa firme: asegura su lugar en cuartos de final del Pacifico Surf Open Cerritos México",
+        "titulo": "Jhony Corzo pisa firme: avanza a semifinales del Pacífico Surf Open Cerritos México",
         "categoria": "DEPORTES",
-        "resumen": "Con temple, lectura precisa del oleaje mexicano y carácter en los momentos clave, Jhony Corzo se instala entre los ocho mejores y ya apunta al Heat 2 frente a Tyrone Fomenko.",
+        "resumen": "Con temple, lectura precisa del oleaje mexicano y carácter en los momentos clave, Jhony Corzo se instala entre los cuatro mejores del certamen y ya apunta a su duelo frente a Josh Burke.",
         "imagen": "img/corzo-2.png",
         "autor": "ISAAC MIRONOV",
         "fecha": "22 DE NOVIEMBRE DE 2026",
         "contenido": [
             {
                 "tipo": "texto",
-                "valor": "Cuando el mar exige cabeza fría y determinación, la diferencia está en saber esperar el momento exacto. Bajo esa premisa, <strong>Jhony Corzo</strong> firmó una sólida actuación durante el tercer día del <strong>Pacifico Surf Open Cerritos México</strong> para asegurar su boleto a los <strong>cuartos de final,</strong> confirmando que llega a la recta decisiva con el ritmo y la lectura en su punto más fino.\n\nAprovechando el buen oleaje que ofreció la playa mexicana, Corzo supo filtrar entre la energía del mar para encontrar los sets indicados. Lejos de precipitarse por cualquier ola, apostó por la paciencia y la precisión: elegir la línea correcta, ejecutar con firmeza y sostener el control hasta el cierre de cada serie. En una jornada marcada por la intensidad y las ganas de ganar, su presencia en el agua dejó claro el peso de saber competir con temple en casa."
+                "valor": "Cuando el mar exige cabeza fría y determinación, la diferencia está en saber esperar el momento exacto. Bajo esa premisa,<strong> Jhony Corzo</strong> firmó una sólida actuación dentro del <strong>Pacífico Surf Open Cerritos México</strong> para asegurar su boleto a las <strong>semifinales</strong>, confirmando que llega a la instancia decisiva con el ritmo y la lectura en su punto más fino."
             },
             {
                 "tipo": "imagen",
@@ -490,10 +490,20 @@
             },
             {
                 "tipo": "texto",
-                "valor": "Con el pase ya en mano, el panorama entra ahora en territorio de máxima exigencia. <strong>Jhony Corzo</strong> se enfrentará a <strong>Tyrone Fomenko </strong>en el<strong> Heat 2 de los cuartos de final,</strong> un cruce directo donde cada set contará el doble y en el que buscará imponer nuevamente su lectura del mar para seguir avanzando rumbo a lo más alto del torneo."
+                "valor": "Aprovechando el buen oleaje que ofreció la playa mexicana,<strong> Corzo</strong> supo filtrar entre la energía del mar para encontrar los sets indicados. Lejos de precipitarse por cualquier ola, apostó por la paciencia y la precisión: elegir la línea correcta, <strong>ejecutar con firmeza y sostener el control hasta el cierre de cada serie.</strong> En una jornada marcada por la intensidad y las ganas de ganar, su presencia en el agua dejó claro el peso de saber competir con temple en casa."
+            },
+            {
+                "tipo": "imagen",
+                "valor": "img/corzo-3.png",
+                "pie": "Fotografías: Crédito oficial a la cuenta de Instagram de Jhony Corzo (@jhonycorzo)."
+            },
+            {
+                "tipo": "texto",
+                "valor": "Con el pase a semifinales ya en mano, el panorama entra ahora en territorio de máxima exigencia. <strong>Jhony Corzo se enfrentará a Josh Burke</strong> por un lugar en la gran final, un cruce directo de alto calibre donde cada set contará el doble y en el que buscará imponer nuevamente su lectura del mar para seguir avanzando rumbo a lo más alto del torneo."
             }
         ]
     }
+
 
 
 
