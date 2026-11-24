@@ -54,7 +54,13 @@ document.addEventListener('error', (e) => {
     const img = e.target;
     if (img.tagName !== 'IMG') return;
     const logo = img.closest('.barra-logo');
-    if (logo) { logo.classList.add('sin-logo'); return; }
+    if (logo) {
+        // El logo prueba las rutas de respaldo (img/ junto a la página o en carpetas de arriba) antes de caer a texto.
+        const [siguiente, ...resto] = (img.dataset.respaldo || '').split(/\s+/).filter(Boolean);
+        if (siguiente) { img.dataset.respaldo = resto.join(' '); img.src = siguiente; return; }
+        logo.classList.add('sin-logo');
+        return;
+    }
     img.closest('.marco, .conv-mascota')?.classList.add('sin-imagen');
 }, true);
 
@@ -274,6 +280,20 @@ function citaDe(n, desde = 0) {
     const utiles = frases.filter((f) => !/moonflag/i.test(f));
     return (utiles[Math.min(desde, utiles.length - 1)] || n.resumen).replace(/"([^"]+)"/g, '‘$1’');
 }
+
+/* El CMS exporta los bloques "Cita" como un párrafo entero entre comillas (“…”, «…», "…",
+   a veces dobles: “«…»”). Ese párrafo se reconoce y se publica como cita, no como texto. */
+const COMILLAS_EXTREMOS = /^[\s“"«‘„]+|[\s”"»’]+$/g;
+function textoDeCita(linea) {
+    const plano = String(linea).replace(/<[^>]+>/g, '').trim();
+    if (!/^[“"«„]/.test(plano) || !/[”"»]$/.test(plano)) return null;
+    const interior = plano.replace(COMILLAS_EXTREMOS, '').trim();
+    // Comillas en medio = diálogo o varias citas en un párrafo normal: se deja como texto.
+    if (interior.length < 20 || /[“”«»"]/.test(interior)) return null;
+    return interior;
+}
+const limpiarCita = (t) => String(t ?? '').trim().replace(COMILLAS_EXTREMOS, '').trim();
+const bloqueCita = (t, extra = '') => `<blockquote class="cita-media"${extra}><p>«${esc(limpiarCita(t))}»</p></blockquote>`;
 
 function foco(n) {
     return `
@@ -501,23 +521,28 @@ function vistaNota(n) {
     const cita = citaDe(n, 3); // una frase de más adelante, no la de apertura
     const totalParrafos = (n.contenido || []).filter((b) => b.tipo === 'texto')
         .reduce((t, b) => t + String(b.valor).split(/\n+/).filter((l) => l.trim()).length, 0);
-    if ((n.contenido || []).some((b) => b.tipo === 'cita')) citaPuesta = true; // el editor ya puso sus citas
+    // El editor ya puso sus citas (como bloque "cita" o como párrafo entre comillas): no se inventa otra.
+    const lineasDe = (b) => String(b.valor).split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    if ((n.contenido || []).some((b) => b.tipo === 'cita' || (b.tipo === 'texto' && lineasDe(b).some(textoDeCita)))) citaPuesta = true;
 
     const cuerpo = Array.isArray(n.contenido)
         ? n.contenido.map((b) => {
             if (b.tipo === 'subtitulo') return `<h2 class="subtitulo">${esc(b.valor)}</h2>`;
-            if (b.tipo === 'cita') return `<blockquote class="cita-media"><p>“${esc(b.valor)}”</p></blockquote>`;
+            if (b.tipo === 'cita') return bloqueCita(b.valor);
             if (b.tipo === 'texto' && n.v === 2) {
+                if (textoDeCita(b.valor)) return bloqueCita(textoDeCita(b.valor));
                 parrafosVistos++;
                 let html = `<p>${rico(b.valor)}</p>`;
                 if (!citaPuesta && totalParrafos >= 6 && parrafosVistos === 3 && cita) {
                     citaPuesta = true;
-                    html += `<blockquote class="cita-media" aria-hidden="true"><p>“${esc(cita)}”</p></blockquote>`;
+                    html += bloqueCita(cita, ' aria-hidden="true"');
                 }
                 return html;
             }
             if (b.tipo === 'texto') {
-                return String(b.valor).split(/\n+/).map((l) => l.trim()).filter(Boolean).map((linea) => {
+                return lineasDe(b).map((linea) => {
+                    const citaEnTexto = textoDeCita(linea);
+                    if (citaEnTexto) return bloqueCita(citaEnTexto);
                     const plano = linea.replace(/<[^>]+>/g, '').trim();
                     const esSubtitulo = plano.length <= 90 && plano.split(/\s+/).length >= 2 && !/[.!?…:;,»"”)]$/.test(plano);
                     if (esSubtitulo) return `<h2 class="subtitulo">${esc(plano)}</h2>`;
@@ -525,7 +550,7 @@ function vistaNota(n) {
                     let html = `<p>${rico(linea)}</p>`;
                     if (!citaPuesta && totalParrafos >= 6 && parrafosVistos === 3 && cita) {
                         citaPuesta = true;
-                        html += `<blockquote class="cita-media" aria-hidden="true"><p>“${esc(cita)}”</p></blockquote>`;
+                        html += bloqueCita(cita, ' aria-hidden="true"');
                     }
                     return html;
                 }).join('');

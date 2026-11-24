@@ -118,7 +118,8 @@ main:focus { outline: none; }
     display: flex; align-items: center; gap: var(--s5);
 }
 .barra-logo { display: inline-flex; align-items: center; text-decoration: none; flex-shrink: 0; }
-.barra-logo img { height: 40px; width: auto; filter: grayscale(1); }
+/* Logo original, sin filtros. El PNG trae mucho margen blanco: object-fit lo recorta para que el logo llene la barra. */
+.barra-logo img { width: 112px; height: 44px; object-fit: cover; object-position: center; }
 .barra-logo-txt {
     display: none;
     font-weight: 900; font-size: var(--t-18);
@@ -985,17 +986,22 @@ p { text-wrap: pretty; }
     max-width: 30ch;
 }
 
+/* Cita: la frase que el editor marcó como "Cita" en el CMS.
+   Móvil y tableta: filete a la izquierda. Escritorio: centrada entre filetes, a todo el ancho. */
 .cita-media {
     margin: var(--s7) 0;
-    padding: var(--s5) 0 var(--s5) var(--s5);
+    padding: var(--s2) 0 var(--s2) var(--s5);
     border-left: 6px solid var(--negro);
 }
 .cita-media p {
     font-family: var(--serif);
     font-size: clamp(1.5rem, 1.1rem + 1.5vw, 2.25rem);
-    line-height: 1.2;
-    letter-spacing: -0.01em;
+    font-weight: 500;
+    line-height: 1.22;
+    letter-spacing: -0.015em;
+    text-align: left;
     text-wrap: balance;
+    hyphens: manual;
     hanging-punctuation: first;
 }
 
@@ -1019,18 +1025,23 @@ p { text-wrap: pretty; }
 }
 
 
+/* Fotos del cuerpo: misma sombra dura que la portada, para que texto y foto compartan el mismo borde. */
+.nota-cuerpo figure .marco { box-shadow: var(--sombra-sm); }
+
 @media (min-width: 700px) {
     .nota-cuerpo > p {
         text-align: justify;
         text-justify: inter-word;
+        hyphenate-limit-chars: 6 3 2;  /* corta solo palabras largas: sin huecos ni guiones de más */
         orphans: 3;
         widows: 3;
     }
 }
 
-@media (min-width: 1100px) {
+/* Dos columnas solo cuando cada una tiene ~55 caracteres; más angostas, el justificado abre huecos. */
+@media (min-width: 1280px) {
     .nota-cuerpo {
-        max-width: none;              
+        max-width: none;
         column-count: 2;
         column-gap: var(--s7);
         column-rule: 1px solid var(--negro);
@@ -1051,13 +1062,19 @@ p { text-wrap: pretty; }
     .nota-cuerpo figure { margin: var(--s6) 0 var(--s7); }
     
     .nota-cuerpo .cita-media {
-        margin: var(--s6) 0 var(--s7);
-        padding: var(--s5) 0;
+        margin: var(--s7) 0 var(--s8);
+        padding: var(--s7) var(--s5) var(--s7);
         border-left: 0;
         border-top: 4px solid var(--negro);
         border-bottom: 1px solid var(--negro);
-        text-align: center;
     }
-    .nota-cuerpo .cita-media p { max-width: 30ch; margin: 0 auto; }
+    .nota-cuerpo .cita-media p {
+        max-width: 26ch;
+        margin: 0 auto;
+        font-size: clamp(2rem, 1.2rem + 1.4vw, 2.625rem);
+        line-height: 1.16;
+        text-align: center;
+        hanging-punctuation: none;
+    }
     .nota-cuerpo .fin { margin-top: var(--s4); }
 }
