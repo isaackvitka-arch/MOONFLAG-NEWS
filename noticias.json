@@ -502,6 +502,31 @@
                 "valor": "Con el pase a semifinales ya en mano, el panorama entra ahora en territorio de máxima exigencia. <strong>Jhony Corzo se enfrentará a Josh Burke</strong> por un lugar en la gran final, un cruce directo de alto calibre donde cada set contará el doble y en el que buscará imponer nuevamente su lectura del mar para seguir avanzando rumbo a lo más alto del torneo."
             }
         ]
+    },
+
+    {
+        "id": 20,
+        "titulo": "Sam Reidy se corona en un duelo de titanes frente a Jhony Corzo en la gran final del Pacífico Surf Open Cerritos México",
+        "categoria": "Deportes",
+        "resumen": "Con una lectura impecable del mar, Sam Reidy conquistó la victoria en la serie definitiva tras un enfrentamiento vibrante ante Jhony Corzo, quien firmó un meritorio segundo lugar dejando fuerza y tenacidad en cada ola.",
+        "imagen": "img/sam-cerritos.png",
+        "autor": "Isaac Mironov",
+        "fecha": "23 de noviembre de 2026",
+        "contenido": [
+            {
+                "tipo": "texto",
+                "valor": "Hay finales que trascienden el marcador para convertirse en un diálogo puro entre dos atletas y la fuerza del océano. Eso fue exactamente lo que ocurrió en el cierre del <strong>Pacífico Surf Open Cerritos México</strong>, donde <strong>Sam Reidy</strong> se alzó con la victoria tras protagonizar un enfrentamiento de altísimo calibre frente a <strong>Jhony Corzo</strong>, demostrando ambos una capacidad extraordinaria para leer, respetar y domar el oleaje de la costa mexicana.\n\nDesde el arranque de la serie, ambos mostraron una gran sintonía con el mar. <strong>Sam Reidy</strong> supo aprovechar los mejores sets con líneas limpias y maniobras muy bien ejecutadas que le dieron el título del certamen, mientras que<strong> Jhony Corzo </strong>mantuvo el ritmo con gran energía, apostando por una remada firme y mucha constancia en cada ola que montó hasta el cierre.\n\nAunque el resultado final coronó a Reidy como campeón y ubicó a Corzo en una sólida <strong>segunda posición</strong>, la actuación de ambos en Cerritos deja una huella imborrable. En cada set disputado, los dos surfistas elevaron el nivel competitivo y mantuvieron en vilo a toda la playa, regalando un cierre digno de una gran final."
+            },
+            {
+                "tipo": "imagen",
+                "valor": "img/corzo-2.png",
+                "pie": "Créditos de fotografía: Cuentas oficiales en redes sociales de Sam Reidy y Jhony Corzo."
+            },
+            {
+                "tipo": "texto",
+                "valor": "\n\n“«Las grandes finales se definen cuando dos competidores doman el mar con respeto y carácter: Sam Reidy conquista el título con autoridad, y Jhony Corzo firma un subcampeonato lleno de temple y corazón.»”\n\nDesde <strong>MOONFLAG NEWS</strong>, enviamos una sincera felicitación tanto a <strong>Sam Reidy</strong> por conquistar esta edición del <strong>Pacífico Surf Open Cerritos México</strong>, como a <strong>Jhony Corzo</strong> por su entrega, fuerza y enorme papel en casa. Dos estilos entregados por completo al ritmo del océano que nos recuerdan por qué el surf es pura cultura en movimiento."
+            }
+        ]
     }
 
 
